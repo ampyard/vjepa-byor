@@ -47,11 +47,11 @@
    - Lets the audience type a command and watch the loop run step by step
    - Shows a run log they can replay
 
-10. **Core interfaces and plugin system**
+10. **Core interfaces and plugin system** ✅ Done
     - Defines the protocols every rig implements (ActionSpace, RigState, VJepaMapping, CommandCodec, Transport, Camera) and a Rig bundle that groups them under one name
     - Discovers installed rig plugins automatically via Python entry points
     - Ships conformance tests and a fake in-memory transport so plugin authors can validate a rig without hardware
-    - Proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core
+    - ⏳ Not done yet: proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core (needs modules 2 and 11; currently proven only with a toy rig in the core's tests)
 
 11. **Simulated rig plugin**
     - Implements the same interfaces as the real rig, including position reporting after each move
