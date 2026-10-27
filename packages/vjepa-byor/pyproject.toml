@@ -1,0 +1,14 @@
+[project]
+name = "vjepa-byor"
+version = "0.1.0.dev0"
+description = "Bring Your Own Robot: fine-tune V-JEPA 2-AC to predict what your robot's actions will do."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.4"]
+
+[project.optional-dependencies]
+testing = ["pytest>=8"]
+
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"

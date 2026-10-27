@@ -1,0 +1,22 @@
+[project]
+name = "vjepa-physical-ai-poc"
+version = "0.0.0"
+description = "V-JEPA Physical AI POC (workspace root, not published)"
+requires-python = ">=3.11"
+dependencies = ["vjepa-byor"]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.uv.sources]
+vjepa-byor = { workspace = true }
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages"]
+addopts = ["--import-mode=importlib"]
