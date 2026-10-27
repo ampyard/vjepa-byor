@@ -10,10 +10,11 @@
    - Generic parts live in the core library; our 8 × 3 vocabulary, XY state, mapping and codec live in the ESP32 rig plugin
    - Validated with unit tests and the core conformance tests (module 10), no hardware needed
 
-3. **Fine-tuning data collector**
+3. **Fine-tuning data collector** ✅ Done
    - Records (before photo, rig state, action, after photo) samples automatically
    - Works with any registered rig plugin, selected by name (`--rig sim`, `--rig esp32-stepper`); no rig-specific code in the collector
    - Exports a clean dataset of at least a few hundred samples
+   - ⏳ Not done yet: end-to-end collection with `--rig sim` (needs module 11; the test is written and skips until the sim rig is installed) and a real-hardware collection run (needs modules 2, 7 and 8; proven so far only with the toy rig in the core's tests)
 
 4. **Fine-tuned V-JEPA predictor**
    - Fine-tunes only the V-JEPA 2-AC predictor; the encoder stays frozen and dataset latents are encoded once ahead of time

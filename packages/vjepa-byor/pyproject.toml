@@ -4,7 +4,13 @@ version = "0.1.0.dev0"
 description = "Bring Your Own Robot: fine-tune V-JEPA 2-AC to predict what your robot's actions will do."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["torch>=2.4"]
+dependencies = [
+    "pillow>=10",
+    "torch>=2.4",
+]
+
+[project.scripts]
+vjepa-byor = "vjepa_byor.cli:main"
 
 [project.optional-dependencies]
 testing = ["pytest>=8"]
