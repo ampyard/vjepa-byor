@@ -12,34 +12,36 @@ This is a monorepo. One part is a library published to PyPI; the rest is specifi
 
 ```
 vjepa-physical-ai-poc/
-├── pyproject.toml                  # uv workspace root (not published)
+├── pyproject.toml                   # uv workspace root (not published)
 ├── backlog.md
 │
 ├── packages/
-│   ├── <package>/                  # core library, published to PyPI (backlog modules 2–4, 10, 12)
-│   ├── <package>-esp32-stepper/    # our rig, built as a plugin (rig-specific parts of module 2 + module 7)
-│   └── <package>-sim/              # simulated rig, also a plugin (module 11)
+│   ├── vjepa-byor/                  # core library, published to PyPI (backlog modules 2–4, 10, 12)
+│   ├── vjepa-byor-esp32-stepper/    # our rig, built as a plugin (rig-specific parts of module 2 + module 7)
+│   └── vjepa-byor-sim/              # simulated rig, also a plugin (module 11)
 │
-├── apps/                           # POC-specific, never published
-│   ├── goal_generator/             # module 1
-│   ├── planner/                    # modules 5 + 6 (scorer + planning loop)
-│   ├── camera_service/             # module 8
-│   └── dashboard/                  # module 9
+├── apps/                            # POC-specific, never published
+│   ├── goal_generator/              # module 1
+│   ├── planner/                     # modules 5 + 6 (scorer + planning loop)
+│   ├── camera_service/              # module 8
+│   └── dashboard/                   # module 9
 │
-├── configs/                        # actions, rig and fine-tuning settings
-├── data/                           # gitignored datasets
-├── checkpoints/                    # gitignored fine-tuned weights
+├── configs/                         # actions, rig and fine-tuning settings
+├── data/                            # gitignored datasets
+├── checkpoints/                     # gitignored fine-tuned weights
 └── docs/
 ```
 
-`<package>` is a placeholder until the PyPI name is chosen.
+### Core library: `packages/vjepa-byor/`
 
-### Core library: `packages/<package>/`
+**vjepa-byor — Bring Your Own Robot:** fine-tune V-JEPA 2-AC to predict what your robot's actions will do.
 
-In one sentence: it fine-tunes your pretrained V-JEPA on your own robot's (before, action, after) data so it can predict what your robot's actions will do, and includes the tools to define that action set and collect that data.
+It fine-tunes your pretrained V-JEPA on your own robot's (before, action, after) data, and includes the tools to define that action set and collect that data. Install with `pip install vjepa-byor`; import as `vjepa_byor`.
+
+A **rig** is your robot setup: the actuators, the controller that drives them, and the camera that watches them. "Robot" is the public-facing word; "rig" is the term used in the code (`Rig`, `RigState`, `--rig`).
 
 ```
-src/<package>/
+src/vjepa_byor/
 ├── interfaces.py          # Protocols: ActionSpace, RigState, VJepaMapping, CommandCodec,
 │                          #   Transport, Camera, DataSource
 ├── rig.py                 # Rig bundle: groups a rig's pieces under one registered name
@@ -65,10 +67,10 @@ src/<package>/
 │   ├── evaluate.py        #   vs "no change" baseline and vs the original predictor
 │   └── inference.py       #   scores a whole action basket in one batch
 ├── testing/               # conformance tests and a fake in-memory transport for plugin authors
-└── cli.py                 # <package> collect | encode | finetune | eval
+└── cli.py                 # vjepa-byor collect | encode | finetune | eval
 ```
 
-### Rig plugins: `packages/<package>-<rig>/`
+### Rig plugins: `packages/vjepa-byor-<rig>/`
 
 Every rig, including ours, is a plugin. A plugin provides:
 
@@ -83,9 +85,9 @@ Every rig, including ours, is a plugin. A plugin provides:
 | Device firmware | — | When the hardware needs custom code |
 
 ```
-<package>-esp32-stepper/
+vjepa-byor-esp32-stepper/
 ├── pyproject.toml         # registers the rig via entry points
-├── src/<package>_esp32_stepper/
+├── src/vjepa_byor_esp32_stepper/
 │   ├── actions.py         # 8 directions × 3 step sizes, XY state
 │   ├── mapping.py         # XY move → [dx, dy, 0, 0, 0, 0, 0]
 │   ├── codec.py
@@ -98,11 +100,11 @@ Every rig, including ours, is a plugin. A plugin provides:
 A plugin registers itself in its `pyproject.toml`:
 
 ```toml
-[project.entry-points."<package>.rigs"]
-esp32-stepper = "<package>_esp32_stepper:Esp32StepperRig"
+[project.entry-points."vjepa_byor.rigs"]
+esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 ```
 
-and is selected by name: `<package> collect --rig esp32-stepper`, or `--rig sim`.
+and is selected by name: `vjepa-byor collect --rig esp32-stepper`, or `--rig sim`.
 
 ## Design decisions
 
@@ -125,6 +127,5 @@ V-JEPA 2-AC (ViT-g encoder, 1,012M params; AC predictor, 305M params) has been v
 
 ## Open decisions
 
-- PyPI package name (`<package>` above)
 - Dataset format; the current plan is image folders plus a JSONL manifest
 - License for this repository

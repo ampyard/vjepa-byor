@@ -59,7 +59,7 @@
     - Lets modules 3, 4 and 6 run end to end with no hardware attached
 
 12. **PyPI packaging and release**
-    - Package name chosen and reserved on PyPI
+    - Package name `vjepa-byor` (import `vjepa_byor`) reserved on PyPI with a placeholder release
     - Core library installs on its own, with no hardware or POC dependencies; V-JEPA weights are not bundled
     - README covers loading V-JEPA 2-AC, writing a rig plugin (using ours as the example) and the collect → encode → finetune → eval workflow
     - CI runs the unit and conformance tests on every change
