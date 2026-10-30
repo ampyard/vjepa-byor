@@ -2,6 +2,18 @@
 
 **Bring Your Own Robot:** fine-tune V-JEPA 2-AC to predict what your robot's actions will do.
 
+## What is a rig?
+
+A **rig** is your robot setup: the actuators that move, the controller that drives them, and the
+camera that watches the result. A desk-sized XY stage with stepper motors, an ESP32 and a webcam is a
+rig, and so is a simulated one. "Robot" is the public-facing word; "rig" is the term used in the code
+(`Rig`, `RigState`, `--rig`).
+
+The library has no hardware code of its own. To use it with your robot, you describe your rig to it:
+which actions it can take, what its position looks like, how to talk to it, and how to see it.
+
+## Adding your rig
+
 A rig plugin implements the protocols in `vjepa_byor.interfaces`, bundles them in a `vjepa_byor.Rig`,
 and registers it under the `vjepa_byor.rigs` entry-point group:
 
