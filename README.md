@@ -108,6 +108,21 @@ esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
 and is selected by name: `vjepa-byor collect --rig esp32-stepper`, or `--rig sim`.
 
+### Simulated rig: `packages/vjepa-byor-sim/`
+
+Registered as `sim`. It has the same mechanics as our real stage and is built only from the core library's
+building blocks (the JSON-line codec and an in-memory transport), with a rendered top-down camera.
+
+```
+vjepa-byor-sim/
+├── pyproject.toml
+├── src/vjepa_byor_sim/
+│   ├── stage.py           # XY carriage in mm; answers JSON-line commands, refuses out-of-range moves
+│   ├── camera.py          # renders the mat, landmark blocks and carriage, 256 × 256 by default
+│   └── rig.py             # SimRig factory; options come from --rig-config
+└── tests/                 # conformance, collector conformance and rendering tests
+```
+
 ## Design decisions
 
 - **Dependencies point one way.** Plugins and apps import the core library; the core never imports them. The core contains no hardware code.

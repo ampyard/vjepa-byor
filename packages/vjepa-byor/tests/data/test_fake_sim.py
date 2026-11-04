@@ -1,4 +1,4 @@
-"""The fake-sim rig end to end, until the real sim rig (module 11) can take over."""
+"""The fake-sim rig end to end, so the core's collector is tested without any plugin installed."""
 
 import pytest
 import torch
@@ -70,7 +70,7 @@ def test_fake_sim_camera_gives_every_position_its_own_photo(fake_sim):
 
 @pytest.fixture
 def cli_dataset(tmp_path_factory, fake_sim_factory):
-    """300 samples collected through the CLI, the way module 11's test will do it."""
+    """300 samples collected through the CLI, the way test_data_sim_e2e does it with the sim plugin."""
     register_rig("fake-sim", fake_sim_factory)
     try:
         out = tmp_path_factory.mktemp("cli") / "fake-sim"

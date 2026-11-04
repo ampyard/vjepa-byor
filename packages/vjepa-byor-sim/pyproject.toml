@@ -1,0 +1,20 @@
+[project]
+name = "vjepa-byor-sim"
+version = "0.1.0.dev0"
+description = "vjepa-byor rig plugin for a simulated XY stage with a rendered top-down camera."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.4",
+    "vjepa-byor",
+]
+
+[project.entry-points."vjepa_byor.rigs"]
+sim = "vjepa_byor_sim:SimRig"
+
+[tool.uv.sources]
+vjepa-byor = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.8,<0.14"]
+build-backend = "uv_build"

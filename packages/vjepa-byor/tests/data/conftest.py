@@ -1,6 +1,7 @@
 """Rigs for the data collector tests.
 
-``fake-sim`` stands in for the simulated rig (module 11) until it exists: an XY
+``fake-sim`` is a small simulated rig that lives in the core's tests, because the
+core must not depend on the ``sim`` plugin (``vjepa-byor-sim``): an XY
 gantry with 8 directions x 3 step sizes, a JSON-line codec and a camera that
 draws the carriage. It is registered as ``fake-sim``, never ``sim``, so it
 cannot clash with the real plugin.

@@ -15,7 +15,8 @@
    - Records (before photo, rig state, action, after photo) samples automatically
    - Works with any registered rig plugin, selected by name (`--rig sim`, `--rig esp32-stepper`); no rig-specific code in the collector
    - Exports a clean dataset of at least a few hundred samples
-   - ⏳ Not done yet: end-to-end collection with `--rig sim` (needs module 11; the test is written and skips until the sim rig is installed) and a real-hardware collection run (needs modules 2, 7 and 8; proven so far only with the toy rig in the core's tests)
+   - End-to-end collection with `--rig sim` passes (300 samples through the CLI, verified)
+   - ⏳ Not done yet: a real-hardware collection run (needs modules 7 and 8)
 
 4. **Fine-tuned V-JEPA predictor**
    - Fine-tunes only the V-JEPA 2-AC predictor; the encoder stays frozen and dataset latents are encoded once ahead of time
@@ -53,12 +54,14 @@
     - Defines the protocols every rig implements (ActionSpace, RigState, VJepaMapping, CommandCodec, Transport, Camera) and a Rig bundle that groups them under one name
     - Discovers installed rig plugins automatically via Python entry points
     - Ships conformance tests and a fake in-memory transport so plugin authors can validate a rig without hardware
-    - ⏳ Not done yet: proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core (the ESP32 rig is now a plugin and passes the conformance and collector conformance tests with no changes to existing core interfaces; still needs module 11)
+    - Proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core interfaces; both pass the conformance and collector conformance tests
 
-11. **Simulated rig plugin**
+11. **Simulated rig plugin** ✅ Done
     - Implements the same interfaces as the real rig, including position reporting after each move
     - Produces photos in the same format and resolution as the camera service
     - Lets modules 3, 4 and 6 run end to end with no hardware attached
+    - Same mechanics as the real stage (8 × 3 vocabulary, 200 × 150 mm travel, XY state in mm, same 7-D mapping), built only from core building blocks (`JsonLineCodec`, in-memory transport); renders an anti-aliased top-down view where every 1 mm move changes the photo
+    - ⏳ Not done yet: module 8 does not exist, so the sim's 256 × 256 resolution (V-JEPA 2-AC's input size) is the target the camera service must match; modules 4 and 6 still need to be built and run against it
 
 12. **PyPI packaging and release**
     - Package name `vjepa-byor` (import `vjepa_byor`) reserved on PyPI with a placeholder release
