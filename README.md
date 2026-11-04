@@ -49,11 +49,10 @@ src/vjepa_byor/
 ├── rig.py                 # Rig bundle: groups a rig's pieces under one registered name
 ├── registry.py            # plugin discovery via Python entry points
 ├── actions/               # module 2 (generic parts)
-│   ├── vocabulary.py      #   discrete action sets as tensors
-│   ├── state.py           #   rig state schema
-│   ├── adapter.py         #   action tensor ⇄ hardware command
-│   ├── vjepa_mapping.py   #   rig action/state → V-JEPA 2-AC 7-D action/state format
-│   └── codecs/            #   reusable wire formats (JSON line, G-code, …)
+│   ├── vocabulary.py      #   discrete action sets as tensors (e.g. 8 compass directions × step sizes)
+│   ├── state.py           #   rig state schema (VectorState: a few named numbers)
+│   ├── vjepa_mapping.py   #   rig action/state → V-JEPA 2-AC 7-D action/state format (SlotMapping)
+│   └── codecs/            #   reusable wire formats: action tensor ⇄ command line (JSON line, …)
 ├── data/                  # module 3
 │   ├── sample.py          #   (before photo, rig state, action, after photo)
 │   ├── collector.py       #   runs any DataSource and records samples
@@ -90,11 +89,12 @@ Every rig, including ours, is a plugin. A plugin provides:
 vjepa-byor-esp32-stepper/
 ├── pyproject.toml         # registers the rig via entry points
 ├── src/vjepa_byor_esp32_stepper/
-│   ├── actions.py         # 8 directions × 3 step sizes, XY state
-│   ├── mapping.py         # XY move → [dx, dy, 0, 0, 0, 0, 0]
-│   ├── codec.py
-│   ├── transport.py       # WiFi / Bluetooth
-│   └── rig.yaml           # limits, step sizes, connection settings
+│   ├── actions.py         # 8 directions × 3 step sizes, XY state (mm)
+│   ├── mapping.py         # XY move → [dx, dy, 0, 0, 0, 0, 0] (metres)
+│   ├── codec.py           # MOVE dx dy → POS x y | ERR message
+│   ├── emulator.py        # Python stand-in for the firmware, for tests
+│   ├── rig.py             # Esp32StepperRig factory; options come from --rig-config
+│   └── transport.py       # WiFi / Bluetooth (module 7)
 ├── firmware/              # PlatformIO project for the ESP32
 └── tests/                 # runs the core library's conformance tests
 ```

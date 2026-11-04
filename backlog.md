@@ -3,12 +3,13 @@
    - Keeps the scene, camera angle and objects consistent; only the commanded change appears
    - Runs in under ~30 seconds per request
 
-2. **Action vocabulary and adapter**
+2. **Action vocabulary and adapter** ✅ Done
    - Defines a small fixed set of actions (e.g. 8 directions × 3 step sizes) as tensors, plus a rig state (current position)
    - Converts any action tensor to a hardware command string and back again
    - Maps rig actions and states to V-JEPA 2-AC's 7-D action/state format (e.g. an XY move becomes `[dx, dy, 0, 0, 0, 0, 0]`); the mapping is pluggable so a custom-sized input layer can replace it later
    - Generic parts live in the core library; our 8 × 3 vocabulary, XY state, mapping and codec live in the ESP32 rig plugin
    - Validated with unit tests and the core conformance tests (module 10), no hardware needed
+   - ⏳ Not done yet: the ESP32 rig has no real transport or camera, so it runs only against its firmware emulator (`Esp32Emulator`) until modules 7 and 8
 
 3. **Fine-tuning data collector** ✅ Done
    - Records (before photo, rig state, action, after photo) samples automatically
@@ -52,7 +53,7 @@
     - Defines the protocols every rig implements (ActionSpace, RigState, VJepaMapping, CommandCodec, Transport, Camera) and a Rig bundle that groups them under one name
     - Discovers installed rig plugins automatically via Python entry points
     - Ships conformance tests and a fake in-memory transport so plugin authors can validate a rig without hardware
-    - ⏳ Not done yet: proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core (needs modules 2 and 11; currently proven only with a toy rig in the core's tests)
+    - ⏳ Not done yet: proven by building our ESP32 rig and the simulated rig as plugins with no changes to the core (the ESP32 rig is now a plugin and passes the conformance and collector conformance tests with no changes to existing core interfaces; still needs module 11)
 
 11. **Simulated rig plugin**
     - Implements the same interfaces as the real rig, including position reporting after each move
