@@ -81,3 +81,30 @@ a new self-contained dataset.
 Plugin authors can check the collector drives their rig by adding
 `vjepa_byor.testing.collector_conformance.CollectorConformanceTests` next to `RigConformanceTests`; it needs
 `rig.camera`, and `vjepa_byor.testing.fake_camera.MarkerCamera` can draw the emulated position.
+
+## Fine-tuning the predictor
+
+Only V-JEPA 2-AC's action-conditioned predictor is fine-tuned; the ViT-g encoder stays frozen. Install the
+model code's dependencies with `pip install vjepa-byor[vjepa]`. The weights are not bundled (they have their
+own license): download `vjepa2-ac-vitg.pt` (about 11 GB) from `https://dl.fbaipublicfiles.com/vjepa2/` to
+`~/.cache/torch/hub/checkpoints/`, or pass `--checkpoint PATH`.
+
+```
+vjepa-byor encode   --data data/sim-run1                        # frozen encoder, once per frame
+vjepa-byor finetune --data data/sim-run1 --out checkpoints/sim  # train split; best epoch on val is kept
+vjepa-byor eval     --data data/sim-run1 --finetuned checkpoints/sim --split test
+```
+
+- **encode** writes `<dataset>/latents/latents.pt`: every frame's layer-normalised latents (256 tokens × 1408,
+  bf16). A rerun after `collect --resume` encodes only the new frames.
+- **finetune** trains on the latents, so the encoder is never in GPU memory. The objective is upstream's
+  teacher-forced step: before latents + mapped action + mapped state → after latents, L1 loss. bf16 autocast,
+  AdamW, warmup + cosine, activation checkpointing. `--lora-rank 16` trains LoRA adapters instead of every
+  weight; `--max-vram-gb 8` caps GPU memory to check a run fits an 8 GB card. The rig's `VJepaMapping` comes
+  from the rig the dataset was collected with (`--rig` / `--rig-config` to override); a mapping that is not
+  7-D gets fresh, custom-sized action and state input layers.
+- **eval** reports the mean L1 error of the fine-tuned predictor, the original one and a "no change" baseline
+  (the before latents), over all samples and over those where the rig moved.
+
+In code, `vjepa_byor.predictor.ActionPredictor(encoder, predictor, rig.mapping).predict_basket(photo, state,
+rig.action_space)` predicts the next-state latents for every action in one batch.

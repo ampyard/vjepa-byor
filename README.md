@@ -60,7 +60,8 @@ src/vjepa_byor/
 │   ├── storage.py         #   on-disk format and manifest
 │   └── dataset.py         #   torch Dataset, splits, export
 ├── predictor/             # module 4
-│   ├── loading.py         #   loads V-JEPA 2-AC (pinned torch.hub commit, bf16)
+│   ├── loading.py         #   loads V-JEPA 2-AC (pinned torch.hub commit) and fine-tuned predictors
+│   ├── encoding.py        #   photo → latents: resize/crop 256, ImageNet norm, layer norm
 │   ├── latent_cache.py    #   encodes the dataset once with the frozen encoder
 │   ├── input_layers.py    #   optional custom-sized action/state input layers
 │   ├── finetune.py        #   predictor-only fine-tuning
@@ -141,6 +142,9 @@ V-JEPA 2-AC (ViT-g encoder, 1,012M params; AC predictor, 305M params) has been v
 
 - Scoring 64 candidate actions in one batch takes about 0.9 s.
 - Peak VRAM during inference is 5.4 GB.
+
+Fine-tuning the predictor (RTX 5060 Ti, capped at 8 GB with `--max-vram-gb 8`, batch 8, activation checkpointing):
+full fine-tuning of all 305M predictor weights peaks at 5.35 GiB and takes about 70 s per epoch on 1,600 samples.
 
 ## Open decisions
 

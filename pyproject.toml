@@ -3,7 +3,7 @@ name = "vjepa-physical-ai-poc"
 version = "0.0.0"
 description = "V-JEPA Physical AI POC (workspace root, not published)"
 requires-python = ">=3.11"
-dependencies = ["vjepa-byor", "vjepa-byor-esp32-stepper", "vjepa-byor-sim"]
+dependencies = ["vjepa-byor[vjepa]", "vjepa-byor-esp32-stepper", "vjepa-byor-sim"]
 
 [tool.uv]
 package = false

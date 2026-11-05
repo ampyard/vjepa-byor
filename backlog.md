@@ -18,12 +18,15 @@
    - End-to-end collection with `--rig sim` passes (300 samples through the CLI, verified)
    - ⏳ Not done yet: a real-hardware collection run (needs modules 7 and 8)
 
-4. **Fine-tuned V-JEPA predictor**
+4. **Fine-tuned V-JEPA predictor** ✅ Done
    - Fine-tunes only the V-JEPA 2-AC predictor; the encoder stays frozen and dataset latents are encoded once ahead of time
    - Fits in 8 GB VRAM (bf16; LoRA on the predictor if full fine-tuning does not fit)
    - Takes a current photo, rig state and action and outputs a predicted next-state embedding
    - On held-out data, predicts closer to the true outcome than both a "no change" baseline and the original (not fine-tuned) predictor
    - Inference fast enough to score a full action basket in a few seconds
+   - Verified on a 2,000-sample `--rig sim` dataset (RTX 5060 Ti, capped at 8 GB): encoding took 56 s; full fine-tuning (10 epochs, about 12 min) peaked at 5.35 GiB, so LoRA (`--lora-rank`) is available but not needed. Test-split mean L1 where the rig moved: fine-tuned 0.180, no change 0.197, original 0.341. Scoring all 24 actions, including encoding the photo, takes about 0.25 s at 7.0 GiB peak
+   - ⚠️ Risk for module 5: from one sample position, the true action's prediction was the closest of the 24 only 5 times. 20 mm moves mostly rank 1st–3rd; 1 mm and 5 mm moves are barely told apart (1 mm is about 1 px on the 256 crop, under one 16-px patch). Options: more data or epochs, a closer camera view in the sim and on the rig, or a scorer that weights the tokens that change
+   - ⏳ Not done yet: fine-tuning on real-hardware data (needs modules 7 and 8)
 
 5. **Scorer**
    - Returns a single error number between a predicted state and the goal state
