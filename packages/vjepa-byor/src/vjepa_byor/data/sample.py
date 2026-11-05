@@ -53,7 +53,7 @@ class Sample(_Record):
     action_index: int
     action_name: str
     action: list[float]
-    command: str
+    command: str | None  # None for rigs driven without command lines (ActionTransport)
     status: str
     changed: bool
     resolution: list[int]

@@ -193,7 +193,7 @@ class Collector:
                 break
             index = self.policy.choose(state, rng)
             action = self.actions[index]
-            command = self.rig.codec.encode_action(action)
+            command = self.rig.command_for(action)
             status, error = STATUS_OK, None
             try:
                 after_state = self.rig.execute(action)
@@ -283,7 +283,12 @@ class Collector:
         return None
 
     def _drain(self) -> None:
-        """Discard replies that arrived late, so they are not mistaken for the next one."""
+        """Discard replies that arrived late, so they are not mistaken for the next one.
+
+        Only line transports need this: an ActionTransport handles late replies itself.
+        """
+        if not self.rig.uses_lines:
+            return
         stale = []
         for _ in range(100):
             try:

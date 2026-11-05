@@ -302,3 +302,29 @@ def test_collector_has_no_rig_specific_code():
     for path in data.rglob("*.py"):
         text = path.read_text(encoding="utf-8").lower()
         assert not re.search(r"esp32|stepper", text), path.name
+
+
+# A rig driven through an ActionTransport (no codec, no command lines)
+
+
+@pytest.fixture
+def direct_marker_rig(direct_rig_factory):
+    rig = direct_rig_factory()
+    device = rig.transport.responder
+    rig.camera = MarkerCamera(lambda: [device.x], [(0, 20)])
+    return rig
+
+
+def test_collects_from_a_rig_driven_with_action_tensors(tmp_path, direct_marker_rig):
+    rig = direct_marker_rig
+    summary = run(rig, tmp_path, num_samples=12, steps_per_episode=6, policy=Scripted([3]))  # +5 until the end stop
+    assert summary.total == 12
+    report = verify(tmp_path)
+    assert report.ok, report.format()
+    samples = read_samples(tmp_path)
+    assert all(s.command is None for s in samples)
+    assert samples[-1].state_after == {"x": rig.transport.responder.x}
+    for s in samples:
+        assert torch.equal(load_frame(tmp_path / s.after_frame), render(s.state_after["x"]))
+    assert any(s.status == "rejected" for s in samples)
+    assert "stale_replies_drained" not in events(tmp_path)

@@ -9,7 +9,8 @@
    - Maps rig actions and states to V-JEPA 2-AC's 7-D action/state format (e.g. an XY move becomes `[dx, dy, 0, 0, 0, 0, 0]`); the mapping is pluggable so a custom-sized input layer can replace it later
    - Generic parts live in the core library; our 8 × 3 vocabulary, XY state, mapping and codec live in the ESP32 rig plugin
    - Validated with unit tests and the core conformance tests (module 10), no hardware needed
-   - ⏳ Not done yet: the ESP32 rig has no real transport or camera, so it runs only against its firmware emulator (`Esp32Emulator`) until modules 7 and 8
+   - ⏳ Not done yet: the ESP32 rig has no real transport or camera, so it runs only against its emulator (`Esp32Emulator`) until modules 7 and 8
+   - ⏳ To change in module 7: the ESP32 rig's codec and emulator still use our own `MOVE`/`POS`/`ERR` protocol; they move to FluidNC's G-code and status reports
 
 3. **Fine-tuning data collector** ✅ Done
    - Records (before photo, rig state, action, after photo) samples automatically
@@ -38,11 +39,16 @@
    - Replans after each step and stops when error falls below a threshold
    - Works end to end in simulation before touching hardware
 
-7. **ESP32 hardware controller**
-   - Receives commands over WiFi or Bluetooth and drives the stepper motors
-   - Acknowledges each command and reports the rig's position (state) when the move is complete
-   - Has a safe stop and handles out-of-range commands
-   - Firmware lives in the ESP32 rig plugin; a round-trip test keeps its wire format in sync with the Python codec
+7. **ESP32 hardware controller (FluidNC)**
+   - The ESP32 runs [FluidNC](http://wiki.fluidnc.com), open-source motion-control firmware, so we do not write or maintain our own
+   - FluidNC's `config.yaml` (motor pins, steps per mm, speeds, 200 × 150 mm travel, homing, soft limits) is kept in the ESP32 rig plugin
+   - Receives G-code over WiFi (telnet) or USB serial and drives the stepper motors
+   - Each action is sent as a relative jog (`$J=G91 X<dx> Y<dy> F<feed>`). The plugin waits for `ok`, then polls the status report (`?`) until the state is `Idle` and reads the position from `MPos`
+   - Homes on startup (`$H`, needs limit switches), so the reported position is absolute and the soft limits work
+   - Refuses out-of-range moves: with soft limits on, a jog past the travel area is rejected with an `error:` reply and the carriage does not move, so no alarm needs clearing
+   - Safe stop: jog cancel or feed hold (`!`), and soft reset (Ctrl-X) as the hard stop. `ALARM` states are raised as `RigError`
+   - The plugin's codec changes from `MOVE`/`POS`/`ERR` to G-code jogs and FluidNC status reports. A FluidNC transport handles the multi-line exchange (`ok`, then status polling), so `Rig.execute` still sees one command and one reply
+   - `Esp32Emulator` answers like FluidNC, so the unit and conformance tests still run without hardware; replies captured from the real board are stored as test fixtures so the codec is tested against real output
 
 8. **Camera capture service**
    - Takes a photo on request with a fixed position and lighting
@@ -72,6 +78,22 @@
     - README covers loading V-JEPA 2-AC, writing a rig plugin (using ours as the example) and the collect → encode → finetune → eval workflow
     - CI runs the unit and conformance tests on every change
 
-Suggested order: 10 first (everything else plugs into it), then 2 and 11, so modules 3, 4, 5 and 6 can be built and tested in simulation before the hardware (7, 8) is ready.
+13. **ROS 2 support through a config file**
+    - Any ROS 2 robot can be used as a rig without writing a plugin package: `vjepa-byor collect --rig ros2 --rig-config my_robot.yaml`
+    - Ships inside `vjepa-byor` as the built-in `ros2` rig with an optional extra (`pip install vjepa-byor[ros2]`). ROS is imported only when `--rig ros2` is selected, so the core still installs and runs without ROS. `rclpy` comes from the user's sourced ROS 2 environment, not from PyPI, and the README says so
+    - The config file describes:
+      - the command interface: a topic or an action, its message type, and how a rig action fills the message
+      - the state source: a topic, its message type, and which fields make up the rig state
+      - the camera topic and the output resolution (256 × 256 by default, same as the fine-tuning data)
+      - the action vocabulary and the V-JEPA mapping slots (reusing `SlotMapping`)
+    - Supports common message types out of the box (`geometry_msgs/Twist`, `geometry_msgs/PoseStamped`, `sensor_msgs/JointState`, `control_msgs/FollowJointTrajectory`, `sensor_msgs/Image` and `CompressedImage`). For anything else, the config can name a custom converter function
+    - A move counts as finished when the ROS action completes, or when the state stops changing within a set tolerance. The photo and the state are matched by message timestamps
+    - Imports recorded rosbags as a `DataSource`, so existing robot logs become (before photo, rig state, action, after photo) samples
+    - ✅ Core interface change done: besides the line `Transport` + `CommandCodec` pair, a rig can use an `ActionTransport` that takes action tensors and returns rig states directly (`execute(action, timeout)`), so ROS messages don't go through strings. `FakeActionTransport` and the conformance suite support it (codec tests are skipped), and the collector records `command: null` for such rigs. Existing plugins work unchanged
+    - Validated by running the conformance tests and a `collect` run against the sim rig exposed through ROS 2 by a small bridge node, and against one Gazebo robot. CI runs the ROS tests in a ROS 2 container, separate from the main job
+    - Stretch goal: expose the planner (module 6) as a ROS 2 action server, so a ROS stack can ask the robot to reach a goal image
+    - Our own rig does not use ROS: the ESP32 with FluidNC (module 7) talks to the plugin directly
+
+Suggested order: 10 first (everything else plugs into it), then 2 and 11, so modules 3, 4, 5 and 6 can be built and tested in simulation before the hardware (7, 8) is ready. Module 13 comes after the demo works and before or alongside the PyPI release (12).
 
 For the demo, modules 1, 5 and 9 work well as standalone showpieces even before the hardware is ready.

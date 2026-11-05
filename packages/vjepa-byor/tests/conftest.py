@@ -14,7 +14,7 @@ import torch
 import torch.nn.functional as F
 
 from vjepa_byor import CodecError, Rig, RigError
-from vjepa_byor.testing import FakeTransport
+from vjepa_byor.testing import FakeActionTransport, FakeTransport
 
 
 class LineState:
@@ -97,6 +97,20 @@ class LineDevice:
         return f"POS {self.x}"
 
 
+class DirectLineDevice:
+    """The same rail, driven with action tensors instead of command lines (for an ActionTransport)."""
+
+    def __init__(self, x: int = 10) -> None:
+        self.x = x
+
+    def __call__(self, action: torch.Tensor) -> LineState:
+        dx = int(action[0].item())
+        if not 0 <= self.x + dx <= 20:
+            raise RigError("out of range")
+        self.x += dx
+        return LineState(self.x)
+
+
 class FakeCamera:
     resolution = (32, 48)
 
@@ -114,6 +128,27 @@ def make_line_rig(start: int = 10) -> Rig:
         transport=FakeTransport(LineDevice(start)),
         camera=FakeCamera(),
     )
+
+
+def make_direct_line_rig(start: int = 10) -> Rig:
+    return Rig(
+        name="line-direct",
+        action_space=LineActions(),
+        state_type=LineState,
+        mapping=LineMapping(),
+        transport=FakeActionTransport(DirectLineDevice(start)),
+        camera=FakeCamera(),
+    )
+
+
+@pytest.fixture
+def direct_rig_factory():
+    return make_direct_line_rig
+
+
+@pytest.fixture
+def direct_rig() -> Rig:
+    return make_direct_line_rig()
 
 
 @pytest.fixture

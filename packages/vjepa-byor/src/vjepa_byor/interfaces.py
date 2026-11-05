@@ -5,8 +5,14 @@ Conventions shared by all of them:
 - An action is a 1-D float tensor of length ``ActionSpace.dim``. A batch of
   actions is a 2-D tensor of shape ``(N, dim)``.
 - A rig state is the rig's position, reported by the hardware after every move.
-- Wire messages are single lines of text without a trailing newline. Framing is
-  the transport's job.
+- A rig is driven in one of two ways:
+
+  - **Text lines** (serial, WiFi, Bluetooth): a :class:`CommandCodec` turns an
+    action into a command line and the reply back into a state, and a
+    :class:`Transport` carries the lines. Lines have no trailing newline;
+    framing is the transport's job.
+  - **Actions directly** (ROS 2, a vendor SDK, ...): an :class:`ActionTransport`
+    takes the action tensor and returns the state the rig reports. No codec.
 
 The core library contains no hardware code: rig plugins provide these pieces
 and bundle them in a :class:`vjepa_byor.rig.Rig`.
@@ -115,7 +121,11 @@ class CommandCodec(Protocol):
 
 @runtime_checkable
 class Transport(Protocol):
-    """Carries command lines to the hardware and replies back (WiFi, Bluetooth, serial, ...)."""
+    """Carries command lines to the hardware and replies back (WiFi, Bluetooth, serial, ...).
+
+    Pairs with a :class:`CommandCodec`. For rigs driven without text lines, see
+    :class:`ActionTransport`.
+    """
 
     def open(self) -> None: ...
 
@@ -128,6 +138,34 @@ class Transport(Protocol):
 
     def receive(self, timeout: float | None = None) -> str:
         """Next reply line. Raises :class:`TimeoutError` if none arrives in time."""
+        ...
+
+
+@runtime_checkable
+class ActionTransport(Protocol):
+    """Sends an action to the rig and returns the state it reports, with no text in between.
+
+    Use it instead of a :class:`CommandCodec` and :class:`Transport` pair when the
+    rig is driven through typed messages (ROS 2 topics or actions, a vendor SDK,
+    ...). It owns the whole exchange: convert the action, send it, wait until the
+    move has finished, and read back the state. Discarding late replies to
+    earlier commands is its job too.
+    """
+
+    def open(self) -> None: ...
+
+    def close(self) -> None: ...
+
+    @property
+    def is_open(self) -> bool: ...
+
+    def execute(self, action: torch.Tensor, timeout: float | None = None) -> RigState:
+        """Carry out one action and return the rig's new state.
+
+        Raises :class:`RigError` if the rig rejects or fails the move,
+        :class:`TimeoutError` if no state arrives in time, and
+        :class:`ConnectionError` if the link is down.
+        """
         ...
 
 

@@ -1,9 +1,13 @@
-"""An in-memory Transport: no hardware, no sockets."""
+"""In-memory transports: no hardware, no sockets."""
 
 from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+
+import torch
+
+from vjepa_byor.interfaces import RigState
 
 
 class FakeTransport:
@@ -50,3 +54,38 @@ class FakeTransport:
 
     def queue_reply(self, line: str) -> None:
         self._replies.append(line)
+
+
+class FakeActionTransport:
+    """An in-memory :class:`~vjepa_byor.interfaces.ActionTransport`.
+
+    ``responder`` stands in for the rig: it is called with each action and
+    returns the state the rig would report, or raises
+    :class:`~vjepa_byor.interfaces.RigError` to reject the move. If it returns
+    ``None`` the rig never answers and :meth:`execute` raises ``TimeoutError``.
+    Every action received is recorded in :attr:`sent`.
+    """
+
+    def __init__(self, responder: Callable[[torch.Tensor], RigState | None]) -> None:
+        self.responder = responder
+        self.sent: list[torch.Tensor] = []
+        self._open = False
+
+    @property
+    def is_open(self) -> bool:
+        return self._open
+
+    def open(self) -> None:
+        self._open = True
+
+    def close(self) -> None:
+        self._open = False
+
+    def execute(self, action: torch.Tensor, timeout: float | None = None) -> RigState:
+        if not self._open:
+            raise ConnectionError("transport is not open")
+        self.sent.append(action.clone())
+        state = self.responder(action)
+        if state is None:
+            raise TimeoutError("the rig reported no state")
+        return state

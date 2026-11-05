@@ -2,6 +2,7 @@
 
 from vjepa_byor.interfaces import (
     ActionSpace,
+    ActionTransport,
     Camera,
     CodecError,
     CommandCodec,
@@ -21,6 +22,7 @@ from vjepa_byor.rig import Rig
 
 __all__ = [
     "ActionSpace",
+    "ActionTransport",
     "Camera",
     "CodecError",
     "CommandCodec",

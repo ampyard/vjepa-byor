@@ -23,6 +23,32 @@ class TestLineRig(RigConformanceTests):
         return line_states
 
 
+class TestDirectLineRig(RigConformanceTests):
+    """The same toy rig driven through an ActionTransport: the codec tests are skipped."""
+
+    registered_name = "line-direct"
+
+    @pytest.fixture(autouse=True)
+    def registered(self, direct_rig_factory):
+        register_rig("line-direct", direct_rig_factory)
+        yield
+        unregister_rig("line-direct")
+
+    @pytest.fixture
+    def rig(self, direct_rig):
+        return direct_rig
+
+    @pytest.fixture
+    def sample_states(self, line_states):
+        return line_states
+
+
+def test_direct_rig_satisfies_the_protocols(direct_rig):
+    assert direct_rig.codec is None
+    assert isinstance(direct_rig.transport, interfaces.ActionTransport)
+    assert not isinstance(direct_rig.transport, interfaces.Transport)
+
+
 def test_toy_rig_satisfies_the_protocols(line_rig, line_states):
     assert isinstance(line_rig.action_space, interfaces.ActionSpace)
     assert isinstance(line_rig.mapping, interfaces.VJepaMapping)

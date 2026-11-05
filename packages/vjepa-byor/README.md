@@ -22,9 +22,16 @@ and registers it under the `vjepa_byor.rigs` entry-point group:
 my-rig = "my_rig_package:make_rig"
 ```
 
+There are two ways to talk to the hardware:
+
+- **Text commands** (serial, WiFi, Bluetooth): give the rig a `CommandCodec`, which turns an action into
+  a command line and the reply back into a state, and a `Transport` that carries the lines.
+- **Action tensors** (ROS 2, a vendor SDK, ...): give the rig an `ActionTransport` and no codec. Its
+  `execute(action, timeout)` carries out the move and returns the state the rig reports.
+
 Validate it without hardware by subclassing `vjepa_byor.testing.conformance.RigConformanceTests`
 (install with `pip install vjepa-byor[testing]`) and backing the rig with a
-`vjepa_byor.testing.FakeTransport` that answers like your device.
+`vjepa_byor.testing.FakeTransport` (or `FakeActionTransport`) that answers like your device.
 
 ## Collecting a fine-tuning dataset
 

@@ -19,6 +19,10 @@ device, so the suite runs without hardware::
         def sample_states(self):
             return [MyState(0, 0), MyState(120, -40)]
 
+A rig driven by an :class:`~vjepa_byor.interfaces.ActionTransport` (no codec)
+can use :class:`~vjepa_byor.testing.FakeActionTransport` instead; the codec
+tests are then skipped.
+
 ``test_execute_every_action`` sends every action once, in order, from the
 emulator's starting state, so start it somewhere all of them are in range.
 """
@@ -32,7 +36,7 @@ from typing import ClassVar
 import pytest
 import torch
 
-from vjepa_byor.interfaces import CodecError, RigState
+from vjepa_byor.interfaces import ActionTransport, CodecError, RigState, Transport
 from vjepa_byor.registry import available_rigs, load_rig
 from vjepa_byor.rig import Rig
 
@@ -138,9 +142,16 @@ class RigConformanceTests:
         assert mapped.shape == (len(sample_states), rig.mapping.state_dim)
         assert mapped.is_floating_point() and torch.isfinite(mapped).all()
 
-    # CommandCodec
+    # CommandCodec (only for rigs driven with command lines)
 
-    def test_codec_action_round_trip(self, rig: Rig) -> None:
+    @pytest.fixture
+    def codec_rig(self, rig: Rig) -> Rig:
+        if not rig.uses_lines:
+            pytest.skip("rig has no codec; it uses an ActionTransport")
+        return rig
+
+    def test_codec_action_round_trip(self, codec_rig: Rig) -> None:
+        rig = codec_rig
         for action in rig.action_space.actions():
             line = rig.codec.encode_action(action)
             assert isinstance(line, str) and line
@@ -149,7 +160,8 @@ class RigConformanceTests:
             assert torch.allclose(decoded.to(action.dtype), action)
             assert rig.action_space.contains(decoded)
 
-    def test_codec_state_round_trip(self, rig: Rig, sample_states: list[RigState]) -> None:
+    def test_codec_state_round_trip(self, codec_rig: Rig, sample_states: list[RigState]) -> None:
+        rig = codec_rig
         for state in sample_states:
             line = rig.codec.encode_state(state)
             assert "\n" not in line and "\r" not in line
@@ -157,13 +169,20 @@ class RigConformanceTests:
             assert isinstance(decoded, rig.state_type)
             assert decoded.to_dict() == state.to_dict()
 
-    def test_codec_rejects_garbage(self, rig: Rig) -> None:
+    def test_codec_rejects_garbage(self, codec_rig: Rig) -> None:
+        rig = codec_rig
         with pytest.raises(CodecError):
             rig.codec.decode_action("\x00not a command")
         with pytest.raises(CodecError):
             rig.codec.decode_state("\x00not a state")
 
     # Transport, end to end through the Rig
+
+    def test_transport_kind_matches_codec(self, rig: Rig) -> None:
+        if rig.uses_lines:
+            assert isinstance(rig.transport, Transport), "a rig with a codec needs a line Transport"
+        else:
+            assert isinstance(rig.transport, ActionTransport), "a rig without a codec needs an ActionTransport"
 
     def test_execute_every_action(self, open_rig: Rig) -> None:
         for action in open_rig.action_space.actions():
