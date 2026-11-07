@@ -28,6 +28,7 @@ vjepa-physical-ai-poc/
 │   ├── camera_service/              # module 8
 │   └── dashboard/                   # module 9
 │
+├── docker/                          # ROS 2 Jazzy + GPU container (see docker/README.md)
 ├── configs/                         # actions, rig and fine-tuning settings
 ├── data/                            # gitignored datasets
 ├── checkpoints/                     # gitignored fine-tuned weights
@@ -128,6 +129,10 @@ vjepa-byor-sim/
 │   └── rig.py             # SimRig factory; options come from --rig-config
 └── tests/                 # conformance, collector conformance and rendering tests
 ```
+
+## Running with ROS 2
+
+On Ubuntu 24.04, ROS 2 Jazzy can be installed natively. Everywhere else (other Linux versions, Windows via WSL 2, macOS without a GPU), use the Docker container with ROS 2 Jazzy and the workspace: build it with `docker build -f docker/Dockerfile -t vjepa-ros2:jazzy .` and start a shell with `docker/run.sh`. Which setup to use, prerequisites, options and known issues are in [docker/README.md](docker/README.md).
 
 ## Design decisions
 

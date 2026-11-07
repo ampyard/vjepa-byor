@@ -1,0 +1,12 @@
+# Build context: only pyproject/lock and packages/ are copied; the repo is mounted at run time
+.git
+.venv
+data
+checkpoints
+docs
+**/__pycache__
+**/*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+*.png
