@@ -1,4 +1,4 @@
-"""Command line: ``vjepa-byor collect | encode | finetune | eval``."""
+"""Command line: ``vjepa-byor collect | encode | finetune | eval | rank``."""
 
 from __future__ import annotations
 
@@ -283,6 +283,47 @@ def _eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_rank(subparsers: Any) -> None:
+    p = subparsers.add_parser(
+        "rank",
+        help="check a scorer: where does the action the rig really took rank among all candidates?",
+        description="For each held-out sample where the rig moved, score every action against the after photo.",
+    )
+    _add_model_args(p)
+    _add_rig_args(p)
+    p.add_argument("--finetuned", type=Path, required=True, help="directory written by vjepa-byor finetune")
+    p.add_argument("--split", default="test", choices=["train", "val", "test"])
+    p.add_argument(
+        "--scorer", action="append", choices=["l1", "change-weighted"], help="scorer to check; repeat for several (default: l1)"
+    )
+    p.add_argument("--alpha", type=float, default=0.9, help="share of the weight from changing tokens (change-weighted)")
+    p.add_argument("--json", type=Path, help="also write the reports here")
+    p.set_defaults(handler=_rank)
+
+
+def _rank(args: argparse.Namespace) -> int:
+    from vjepa_byor.planning import make_scorer, rank_true_actions
+    from vjepa_byor.predictor import LatentDataset, loading
+
+    meta = read_meta(args.data)
+    info = loading.read_finetuned_info(args.finetuned)
+    args.rig = args.rig or info.get("rig")
+    mapping = _rig_mapping(args, meta.rig)
+    dataset = LatentDataset(args.data, mapping, args.split)
+    predictor = loading.load_finetuned(args.finetuned).to(_device(args.device))
+    scorers = [
+        make_scorer(name, **({"alpha": args.alpha} if name == "change-weighted" else {})) for name in args.scorer or ["l1"]
+    ]
+    actions = torch.tensor(meta.actions, dtype=torch.float32)
+    reports = rank_true_actions(predictor, dataset, actions, meta.action_labels, scorers)
+    print(f"{args.split} split, {len(actions)} candidate actions")
+    for report in reports:
+        print(report.format(len(actions)))
+    if args.json is not None:
+        args.json.write_text(json.dumps([r.summary() for r in reports], indent=2) + "\n", encoding="utf-8")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="vjepa-byor", description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -290,6 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     _add_encode(subparsers)
     _add_finetune(subparsers)
     _add_eval(subparsers)
+    _add_rank(subparsers)
     args = parser.parse_args(argv)
     return args.handler(args)
 

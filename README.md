@@ -18,13 +18,13 @@ vjepa-physical-ai-poc/
 ├── backlog.md
 │
 ├── packages/
-│   ├── vjepa-byor/                  # core library, published to PyPI (backlog modules 2–4, 10, 12, 13)
+│   ├── vjepa-byor/                  # core library, published to PyPI (backlog modules 2–5, 10, 12, 13)
 │   ├── vjepa-byor-esp32-stepper/    # our rig (ESP32 + FluidNC), built as a plugin (rig-specific parts of module 2 + module 7)
 │   └── vjepa-byor-sim/              # simulated rig, also a plugin (module 11)
 │
 ├── apps/                            # POC-specific, never published
 │   ├── goal_generator/              # module 1
-│   ├── planner/                     # modules 5 + 6 (scorer + planning loop)
+│   ├── planner/                     # module 6 demo runner (planning loop on a chosen rig)
 │   ├── camera_service/              # module 8
 │   └── dashboard/                   # module 9
 │
@@ -67,11 +67,14 @@ src/vjepa_byor/
 │   ├── finetune.py        #   predictor-only fine-tuning
 │   ├── lora.py            #   fallback if full fine-tuning does not fit in VRAM
 │   ├── evaluate.py        #   vs "no change" baseline and vs the original predictor
-│   └── inference.py       #   scores a whole action basket in one batch
+│   └── inference.py       #   predicts the outcome of a whole action basket in one batch
+├── planning/              # module 5
+│   ├── scorer.py          #   one error per candidate action vs the goal latents (L1, change-weighted)
+│   └── ranking.py         #   where the true action ranks on a labelled split (vjepa-byor rank)
 ├── testing/               # conformance tests and a fake in-memory transport for plugin authors
 ├── ros2/                  # module 13: built-in `ros2` rig configured from a file; optional extra
 │                          #   vjepa-byor[ros2], imported only with --rig ros2
-└── cli.py                 # vjepa-byor collect | encode | finetune | eval
+└── cli.py                 # vjepa-byor collect | encode | finetune | eval | rank
 ```
 
 ### Rig plugins: `packages/vjepa-byor-<rig>/`

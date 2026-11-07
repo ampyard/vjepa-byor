@@ -27,6 +27,35 @@ def predict_next(predictor: nn.Module, z: torch.Tensor, actions: torch.Tensor, s
     return F.layer_norm(out, (out.size(-1),))
 
 
+@torch.inference_mode()
+def predict_actions(
+    predictor: nn.Module,
+    mapping: VJepaMapping,
+    z: torch.Tensor,
+    state: torch.Tensor,
+    actions: torch.Tensor,
+    *,
+    batch_size: int = 64,
+) -> torch.Tensor:
+    """Predicted next latents ``float32 (N, tokens, dim)`` for each rig action in ``actions (N, action_dim)``,
+    from the latents ``z (tokens, dim)`` of one photo and the rig state tensor ``state``.
+
+    Runs on the predictor's device (bf16 on CUDA), ``batch_size`` actions at a time.
+    """
+    device = next(predictor.parameters()).device
+    mapped_actions = mapping.map_actions(actions.float()).to(device)
+    mapped_state = mapping.map_states(state.float()).to(device)
+    z = z.to(device)
+    out = []
+    for start in range(0, len(mapped_actions), batch_size):
+        a = mapped_actions[start : start + batch_size].unsqueeze(1)
+        n = len(a)
+        with autocast(device):
+            pred = predict_next(predictor, z.expand(n, -1, -1), a, mapped_state.expand(n, 1, -1))
+        out.append(pred.float())
+    return torch.cat(out)
+
+
 class ActionPredictor:
     """The frozen encoder plus a (fine-tuned) predictor, ready to score actions.
 
@@ -46,20 +75,9 @@ class ActionPredictor:
         """A ``uint8 (3, H, W)`` photo -> its latents ``(tokens, dim)``."""
         return encode_frames(self.encoder, photo.unsqueeze(0))[0]
 
-    @torch.inference_mode()
     def predict(self, z: torch.Tensor, state: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
         """Predicted next latents for each rig action in ``actions (N, action_dim)`` from rig state ``state``."""
-        mapped_actions = self.mapping.map_actions(actions.float()).to(self.device)
-        mapped_state = self.mapping.map_states(state.float()).to(self.device)
-        z = z.to(self.device)
-        out = []
-        for start in range(0, len(mapped_actions), self.batch_size):
-            a = mapped_actions[start : start + self.batch_size].unsqueeze(1)
-            n = len(a)
-            with autocast(self.device):
-                pred = predict_next(self.predictor, z.expand(n, -1, -1), a, mapped_state.expand(n, 1, -1))
-            out.append(pred.float())
-        return torch.cat(out)
+        return predict_actions(self.predictor, self.mapping, z, state, actions, batch_size=self.batch_size)
 
     def predict_basket(self, photo: torch.Tensor, state: RigState, actions: torch.Tensor | ActionSpace) -> torch.Tensor:
         """Encode ``photo`` and predict the outcome of every action; rows follow ``actions``."""

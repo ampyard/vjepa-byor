@@ -293,6 +293,13 @@ def test_cli_encode_finetune_eval(grid_dataset, fake_models, tmp_path, capsys):
     assert "fine-tuned beats both" in printed
     assert list(json.loads(report.read_text())["errors"]) == [NO_CHANGE, "original", "fine-tuned"]
 
+    ranks = tmp_path / "ranks.json"
+    argv = ["rank", "--data", data, "--finetuned", out, "--device", "cpu", "--scorer", "l1", "--scorer", "change-weighted"]
+    assert main([*argv, "--json", str(ranks)]) == 0
+    printed = capsys.readouterr().out
+    assert "16 candidate actions" in printed and "ranked 1st" in printed
+    assert [r["scorer"] for r in json.loads(ranks.read_text())] == ["l1", "change-weighted"]
+
 
 def test_cli_finetune_needs_encoded_data(grid_dataset, fake_models, tmp_path):
     from vjepa_byor.cli import main

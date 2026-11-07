@@ -131,6 +131,7 @@ class LatentDataset(Dataset):
         cache: LatentCache | None = None,
     ) -> None:
         self.root = Path(root)
+        self.mapping = mapping
         self.cache = cache if cache is not None else load_cache(self.root)
         self.samples = select_samples(
             self.root, split=split, include_statuses=include_statuses, drop_no_change=drop_no_change, seed=seed

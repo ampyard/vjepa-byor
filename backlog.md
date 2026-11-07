@@ -27,12 +27,18 @@
    - Inference fast enough to score a full action basket in a few seconds
    - Verified on a 2,000-sample `--rig sim` dataset (RTX 5060 Ti, capped at 8 GB): encoding took 56 s; full fine-tuning (10 epochs, about 12 min) peaked at 5.35 GiB, so LoRA (`--lora-rank`) is available but not needed. Test-split mean L1 where the rig moved: fine-tuned 0.180, no change 0.197, original 0.341. Scoring all 24 actions, including encoding the photo, takes about 0.25 s at 7.0 GiB peak
    - ⚠️ Risk for module 5: from one sample position, the true action's prediction was the closest of the 24 only 5 times. 20 mm moves mostly rank 1st–3rd; 1 mm and 5 mm moves are barely told apart (1 mm is about 1 px on the 256 crop, under one 16-px patch). Options: more data or epochs, a closer camera view in the sim and on the rig, or a scorer that weights the tokens that change
+   - Retrained on 10k sim samples (`data/sim-10k`, 20 epochs, lr 5e-5, best epoch 12, about 2 h, peak 5.35 GiB): test mean L1 where the rig moved: fine-tuned 0.137, no change 0.188, original 0.338. This fixes the ranking risk above (see module 5)
    - ⏳ Not done yet: fine-tuning on real-hardware data (needs modules 7 and 8)
 
-5. **Scorer**
+5. **Scorer** ✅ Done
    - Returns a single error number between a predicted state and the goal state
    - Ranks a correct action above wrong ones on a labelled test set
    - Same score for identical inputs (deterministic)
+   - Built in `vjepa_byor.planning`: `L1Scorer` (V-JEPA 2-AC's energy, the default) and `ChangeWeightedL1Scorer` (weights the tokens that differ between current and goal). `ActionScores` keeps one error per action, which the dashboard's score compass needs. `vjepa-byor rank` reports where the true action ranks on a labelled split. Unit tests cover determinism, ranking and ties
+   - Oracle check (true encoded outcome of each action instead of the predictor): greedy L1 reaches 10/10 sim goals 10–100 mm away, median final error 1.1 mm. So the latent L1 energy works for planning, including far goals
+   - The 2k-sample predictor from module 4 was not good enough (true action 1st only 10% of the time, greedy rollouts reached 0/20 goals). Retrained on 10k sim samples (`checkpoints/sim-10k`), on the 946 test samples where the rig moved, L1 ranks the true action 1st 79% of the time and in the top 3 94% (mean rank 1.5 of 24). By step size: 20 mm 100%, 5 mm 94%, 1 mm 47% ranked 1st
+   - Greedy one-step rollouts in the sim with the 10k predictor and L1: 19/20 goals (10–100 mm away) reached within 5 mm, 3.2 steps on average, median final error 1.4 mm. One run wandered off (final error 96 mm); after reaching the goal the rig hovers around it, so module 6 needs a stop threshold
+   - Change-weighting ranks worse than plain L1 (73% vs 79% 1st) and is kept only as an option
 
 6. **Planner loop**
    - Scores every action in the basket from the current photo and rig state, and picks the lowest error
