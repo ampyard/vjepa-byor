@@ -29,3 +29,25 @@ with load_rig("sim") as rig:
     print(rig.execute(rig.action_space.by_label("NE 5mm")))   # XYState(x_mm=105.0, y_mm=80.0)
     photo = rig.camera.capture()                               # uint8 (3, 256, 256)
 ```
+
+## As a ROS 2 robot
+
+`vjepa_byor_sim.ros2_bridge` runs the sim as an ordinary ROS 2 node (needs `rclpy`, e.g. in the
+[ROS 2 container](../../docker/README.md)):
+
+```bash
+docker/run.sh python -m vjepa_byor_sim.ros2_bridge --ros-args -p start_mm:="[40.0, 100.0]"
+docker/run.sh ros2 topic pub --once /rig/cmd geometry_msgs/msg/Vector3Stamped "{vector: {x: 0.02, y: -0.02}}"
+docker/run.sh ros2 topic echo /rig/state
+```
+
+| Name | Type | |
+|---|---|---|
+| `/camera/image_raw` | `sensor_msgs/Image` | `rgb8`, 256 × 256 |
+| `/rig/state` | `sensor_msgs/JointState` | joints `x`, `y`, positions in metres |
+| `/rig/cmd` (subscribed) | `geometry_msgs/Vector3Stamped` | relative move, `vector.x` / `vector.y` in metres |
+| `/rig/reset` (service) | `std_srvs/Trigger` | carriage back to `start_mm` |
+
+Photo and state share one `header.stamp` and go out at `rate_hz` (10) and after every command, including
+a refused one, which leaves the position unchanged. Parameters: `travel_mm`, `start_mm`, `resolution`,
+`rate_hz`, `camera_frame`, `stage_frame`.
