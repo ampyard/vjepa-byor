@@ -56,6 +56,38 @@ def predict_actions(
     return torch.cat(out)
 
 
+@torch.inference_mode()
+def predict_pairs(
+    predictor: nn.Module,
+    mapping: VJepaMapping,
+    z: torch.Tensor,
+    states: torch.Tensor,
+    actions: torch.Tensor,
+    *,
+    batch_size: int = 64,
+) -> torch.Tensor:
+    """Predicted next latents ``float32 (N, tokens, dim)`` for N independent (latents, state, action) triples:
+    ``z (N, tokens, dim)``, rig ``states (N, state_dim)`` and rig ``actions (N, action_dim)``.
+
+    Used to roll the predictor forward from its own predictions (look-ahead planning).
+    """
+    device = next(predictor.parameters()).device
+    mapped_actions = mapping.map_actions(actions.float()).to(device)
+    mapped_states = mapping.map_states(states.float()).to(device)
+    out = []
+    for start in range(0, len(z), batch_size):
+        end = start + batch_size
+        with autocast(device):
+            pred = predict_next(
+                predictor,
+                z[start:end].to(device),
+                mapped_actions[start:end].unsqueeze(1),
+                mapped_states[start:end].unsqueeze(1),
+            )
+        out.append(pred.float())
+    return torch.cat(out)
+
+
 class ActionPredictor:
     """The frozen encoder plus a (fine-tuned) predictor, ready to score actions.
 
@@ -78,6 +110,10 @@ class ActionPredictor:
     def predict(self, z: torch.Tensor, state: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
         """Predicted next latents for each rig action in ``actions (N, action_dim)`` from rig state ``state``."""
         return predict_actions(self.predictor, self.mapping, z, state, actions, batch_size=self.batch_size)
+
+    def predict_pairs(self, z: torch.Tensor, states: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+        """Predicted next latents for each row of ``z (N, tokens, dim)``, ``states`` and ``actions``."""
+        return predict_pairs(self.predictor, self.mapping, z, states, actions, batch_size=self.batch_size)
 
     def predict_basket(self, photo: torch.Tensor, state: RigState, actions: torch.Tensor | ActionSpace) -> torch.Tensor:
         """Encode ``photo`` and predict the outcome of every action; rows follow ``actions``."""

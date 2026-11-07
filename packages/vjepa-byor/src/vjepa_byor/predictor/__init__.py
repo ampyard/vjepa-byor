@@ -10,7 +10,7 @@ real model needs ``pip install vjepa-byor[vjepa]`` and the weights; see
 from vjepa_byor.predictor.encoding import CROP_SIZE, encode_frames, preprocess
 from vjepa_byor.predictor.evaluate import NO_CHANGE, EvalReport, evaluate, per_sample_errors
 from vjepa_byor.predictor.finetune import EpochLog, FinetuneConfig, FinetuneResult, finetune
-from vjepa_byor.predictor.inference import ActionPredictor, predict_actions, predict_next
+from vjepa_byor.predictor.inference import ActionPredictor, predict_actions, predict_next, predict_pairs
 from vjepa_byor.predictor.input_layers import adapt_input_layers
 from vjepa_byor.predictor.latent_cache import LatentCache, LatentDataset, encode_dataset, load_cache
 from vjepa_byor.predictor.loading import (
@@ -51,6 +51,7 @@ __all__ = [
     "per_sample_errors",
     "predict_actions",
     "predict_next",
+    "predict_pairs",
     "preprocess",
     "read_finetuned_info",
     "save_finetuned",

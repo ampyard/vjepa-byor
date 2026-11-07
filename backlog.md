@@ -40,10 +40,13 @@
    - Greedy one-step rollouts in the sim with the 10k predictor and L1: 19/20 goals (10–100 mm away) reached within 5 mm, 3.2 steps on average, median final error 1.4 mm. One run wandered off (final error 96 mm); after reaching the goal the rig hovers around it, so module 6 needs a stop threshold
    - Change-weighting ranks worse than plain L1 (73% vs 79% 1st) and is kept only as an option
 
-6. **Planner loop**
+6. **Planner loop** ✅ Done
    - Scores every action in the basket from the current photo and rig state, and picks the lowest error
    - Replans after each step and stops when error falls below a threshold
    - Works end to end in simulation before touching hardware
+   - Built in `vjepa_byor.planning` as `Planner` / `PlannerConfig`: stops at a latent-error threshold (0.165), when the rig revisits a state (circling), after `max_steps`, or when cancelled; falls back to the next-best action if the rig refuses one; reports every step (all action errors, chosen action, time) for the dashboard. `apps/planner/sim_planner.py` runs it on the sim
+   - Sim, 10k predictor, 40 random goals: under 60 mm 23/23 (3.6 moves on average, all stop on their own), 60–100 mm 8/17. 0.22 s per decision
+   - Optional look-ahead (`horizon > 1`) is implemented but makes closed-loop results worse with a single-step fine-tuned predictor (3 steps: 10/40); details in docs/talks/roscon-india-2026/demo-backlog.md
 
 7. **ESP32 hardware controller (FluidNC)**
    - The ESP32 runs [FluidNC](http://wiki.fluidnc.com), open-source motion-control firmware, so we do not write or maintain our own
