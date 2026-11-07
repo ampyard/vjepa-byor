@@ -35,10 +35,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-install-workspace
 
 # Workspace packages, installed editable: at run time the repo is mounted over
-# /workspace, so the installed packages are the live source.
+# /workspace, so the installed packages are the live source. The dev group
+# (pytest) comes in here, so the ROS tests can run in the container.
 COPY packages packages
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev \
+    uv sync --frozen \
     && chmod -R a+rX /opt/venv
 
 # docker exec shells get ROS too (docker run goes through ros_entrypoint.sh)
