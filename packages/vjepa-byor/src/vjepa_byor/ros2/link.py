@@ -40,6 +40,21 @@ def set_path(msg: Any, path: str, value: float) -> None:
     setattr(msg, last, type(getattr(msg, last))(value))
 
 
+def read_state(config: StateConfig, msg: Any) -> list[float]:
+    """The rig state's values from a state message, in the config's order and units."""
+    values = []
+    for f in config.fields:
+        if f.joint is not None:
+            names = list(msg.name)
+            if f.joint not in names:
+                raise KeyError(f"no joint {f.joint!r} in {names}")
+            raw = msg.position[names.index(f.joint)]
+        else:
+            raw = get_path(msg, f.field)
+        values.append(float(raw) * f.scale)
+    return values
+
+
 def image_to_tensor(msg: Any, resolution: tuple[int, int]) -> torch.Tensor:
     """A ``sensor_msgs/Image`` as an RGB ``uint8`` tensor ``(3, H, W)``, resized to ``resolution``."""
     channels = _CHANNELS.get(msg.encoding)
@@ -70,7 +85,7 @@ def tensor_to_image(photo: torch.Tensor, stamp: Any, frame_id: str = "") -> Any:
     return msg
 
 
-def _qos(name: str):
+def qos_profile(name: str):
     from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
     reliability = ReliabilityPolicy.BEST_EFFORT if name == "best_effort" else ReliabilityPolicy.RELIABLE
@@ -136,8 +151,8 @@ class Ros2Link:
         # no signal handlers: Ctrl-C stays with the caller (the collector stops cleanly on it)
         rclpy.init(context=self._context, domain_id=self.domain_id, signal_handler_options=SignalHandlerOptions.NO)
         self._node = rclpy.create_node(NODE_NAME, context=self._context)
-        self._node.create_subscription(state_cls, self.state.topic, self._on_state, _qos(self.state.qos))
-        self._node.create_subscription(Image, self.camera.topic, self._on_image, _qos(self.camera.qos))
+        self._node.create_subscription(state_cls, self.state.topic, self._on_state, qos_profile(self.state.qos))
+        self._node.create_subscription(Image, self.camera.topic, self._on_image, qos_profile(self.camera.qos))
         self._pub = self._node.create_publisher(self._cmd_cls, self.command.topic, 10)
         self._executor = SingleThreadedExecutor(context=self._context)
         self._executor.add_node(self._node)
@@ -218,16 +233,7 @@ class Ros2Link:
             self.cond.notify_all()
 
     def _read_state(self, msg: Any) -> list[float]:
-        values = []
-        for f in self.state.fields:
-            if f.joint is not None:
-                raw = msg.position[list(msg.name).index(f.joint)] if f.joint in msg.name else None
-                if raw is None:
-                    raise KeyError(f"no joint {f.joint!r} in {list(msg.name)}")
-            else:
-                raw = get_path(msg, f.field)
-            values.append(float(raw) * f.scale)
-        return values
+        return read_state(self.state, msg)
 
     def _on_image(self, msg: Any) -> None:
         with self.cond:

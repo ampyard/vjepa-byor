@@ -68,14 +68,30 @@ docker/run.sh ros2 run rqt_image_view rqt_image_view
 
 ## The demo: ROS 2 end to end
 
-Three terminals (each `docker/run.sh` is a new container; they find each other through DDS):
+One command starts the robot (sim bridge), the planner (`/reach_goal`, on the GPU) and the dashboard, each in a detached container, and waits until all three are ready:
+
+```bash
+docker/demo.sh up --host ryzen.tail123187.ts.net   # the dashboard listens only on this name's address
+docker/demo.sh status                              # what's running
+docker/demo.sh logs planner                        # follow one: bridge, planner or dashboard
+docker/demo.sh down                                # stop everything
+```
+
+`up` also takes `--port` (8080), `--start X Y` (the carriage's start, mm), `--checkpoint DIR` and `--no-gpu`, and prints the two commands for the demo terminals. If a piece fails to start, it shows that piece's log and stops the rest.
+
+By hand, each `docker/run.sh` is a new container; they find each other through DDS:
 
 ```bash
 docker/run.sh python -m vjepa_byor_sim.ros2_bridge          # 1: the simulated robot
 docker/run.sh python apps/ros2/reach_goal_server.py         # 2: the planner as /reach_goal (GPU)
+docker/run.sh python apps/ros2/dashboard.py --host <name>  # 3: the dashboard, http://<name>:8080
 docker/run.sh ros2 action send_goal --feedback /reach_goal \
-    vjepa_byor_interfaces/action/ReachGoal "{goal_state: [120, 60]}"   # 3: send a goal
+    vjepa_byor_interfaces/action/ReachGoal "{goal_state: [120, 60]}"   # 4: send a goal (or click the mat)
 ```
+
+The dashboard saves every run to `data/dashboard-runs/` and can replay it (the fallback if live inference fails).
+
+Step by step: switch on "Step by step" in the dashboard, or add `step_by_step: true` to the goal. Before every move the planner shows all its predictions and waits; "Next step" (or →, PageDown, Space, so a presentation clicker works) makes the move. From a terminal: `docker/run.sh ros2 service call /reach_goal/next std_srvs/srv/Trigger`.
 
 The robot is described by `apps/ros2/sim_robot.yaml` (the built-in `ros2` rig). The same file collects data over ROS 2: `docker/run.sh vjepa-byor collect --rig ros2 --rig-config apps/ros2/sim_robot.yaml --out data/ros2-sim`. The `ReachGoal` action comes from `ros2/vjepa_byor_interfaces`, built into the image; rebuild after changing it.
 

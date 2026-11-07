@@ -7,6 +7,7 @@
 float64[] goal_state
 sensor_msgs/Image goal_image
 uint32 max_steps                # 0: the server's default
+bool step_by_step               # before each move, wait for a call to <action>/next (std_srvs/Trigger)
 ---
 bool reached                    # the planner's verdict: the photo's error fell to the threshold
 string reason                   # reached, cycle, max_steps, stopped (cancelled), rig_error or error: ...

@@ -87,6 +87,7 @@ class SimBridge(Node):
         self._photo: Tensor | None = None
         self._photo_at: tuple[float, float] | None = None
         self._stamp: Time | None = None  # when the current state was last set or confirmed
+        self._image: tuple[tuple, Image] | None = None  # the last image message, re-sent as is by repeats
 
         self.image_pub = self.create_publisher(Image, "/camera/image_raw", LATCHED)
         self.state_pub = self.create_publisher(JointState, "/rig/state", LATCHED)
@@ -121,7 +122,10 @@ class SimBridge(Node):
         self._send(self._stamp)
 
     def _send(self, stamp: Time) -> None:
-        self.image_pub.publish(image_msg(self.photo(), stamp, self.camera_frame))
+        key = (self.stage.x_mm, self.stage.y_mm, stamp.sec, stamp.nanosec)
+        if self._image is None or self._image[0] != key:  # building the message is the costly part
+            self._image = (key, image_msg(self.photo(), stamp, self.camera_frame))
+        self.image_pub.publish(self._image[1])
         self.state_pub.publish(joint_state_msg(self.stage.x_mm, self.stage.y_mm, stamp, self.stage_frame))
 
     def move(self, dx_mm: float, dy_mm: float) -> bool:

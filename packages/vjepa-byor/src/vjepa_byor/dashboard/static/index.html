@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vjepa-byor · reach goal</title>
+<style>
+  :root {
+    --ink: #1b1f24; --muted: #5b6370; --grid: #d9dde3; --bg: #eef0f3; --card: #ffffff;
+    --accent: #2f6fdb; --accent-dark: #163d86; --good: #1f8a4c; --bad: #c8463a; --warn: #c27c0e;
+    font-size: clamp(14px, 1.15vw, 26px);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font-family: "DejaVu Sans", "Segoe UI", Helvetica, Arial, sans-serif; }
+  body { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; padding: 0.8rem 1rem; gap: 0.8rem; }
+
+  header { display: flex; align-items: center; gap: 0.5rem 1rem; flex-wrap: wrap; }
+  header .controls { margin-left: auto; }
+  header h1 { font-size: 1.45rem; margin: 0; white-space: nowrap; }
+  header h1 span { color: var(--accent); }
+  #status { order: 3; flex: 1 0 100%; min-width: 0; font-size: 1.35rem; font-weight: 700; padding: 0.35rem 0.9rem; border-radius: 0.5rem;
+    background: var(--grid); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status.running { background: var(--accent); color: #fff; }
+  #status.good { background: var(--good); color: #fff; }
+  #status.bad { background: var(--bad); color: #fff; }
+  #status.replay { outline: 0.25rem dashed var(--warn); outline-offset: -0.25rem; }
+  #status.waiting { background: #f3b33d; color: var(--ink); }
+  .toggle { display: flex; align-items: center; gap: 0.35rem; font-size: 0.95rem; white-space: nowrap; cursor: pointer;
+    border: 2px solid var(--ink); border-radius: 0.4rem; padding: 0.3rem 0.6rem; background: var(--card); }
+  .toggle input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--accent); }
+  .toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #next-btn { font-size: 1.15rem; font-weight: 700; background: var(--accent); border-color: var(--accent); color: #fff; padding: 0.35rem 1.2rem; }
+  #next-btn:hover:not(:disabled) { background: var(--accent-dark); border-color: var(--accent-dark); }
+  #moves li.pending .mv { color: #a46a00; }
+  .controls { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+  button, select { font: inherit; font-size: 0.95rem; padding: 0.35rem 0.8rem; border-radius: 0.4rem;
+    border: 2px solid var(--ink); background: var(--card); color: var(--ink); cursor: pointer; }
+  button:hover:not(:disabled) { background: var(--ink); color: #fff; }
+  button:disabled { opacity: 0.35; cursor: default; }
+  #runs { width: 11rem; }
+  #live-btn { border-color: var(--warn); color: var(--warn); font-weight: 700; }
+
+  main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0.8rem; min-height: 0; }
+  .card { background: var(--card); border-radius: 0.6rem; padding: 0.6rem 0.8rem; display: flex; flex-direction: column;
+    min-height: 0; min-width: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+  .card h2 { margin: 0 0 0.4rem; font-size: 1.05rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); display: flex; justify-content: space-between; }
+  .card h2 b { color: var(--ink); text-transform: none; letter-spacing: 0; }
+  .fill { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; position: relative; container-type: size; }
+
+  #camera-card { grid-row: 1 / span 2; }
+  .photo { position: relative; width: min(100cqw, 100cqh); height: min(100cqw, 100cqh); }
+  .photo img { width: 100%; height: 100%; display: block; border-radius: 0.3rem; background: #ccc; image-rendering: auto; }
+  .photo svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #camera-wrap.clickable { cursor: crosshair; }
+  #hover { position: absolute; left: 0.5rem; top: 0.5rem; background: rgba(27,31,36,0.85); color: #fff;
+    padding: 0.15rem 0.5rem; border-radius: 0.3rem; font-size: 0.95rem; pointer-events: none; display: none; }
+  .hint { color: var(--muted); font-size: 0.95rem; margin-top: 0.3rem; text-align: center; }
+  .empty { color: var(--muted); font-size: 1.1rem; text-align: center; }
+
+  #compass, #chart { width: 100%; height: 100%; }
+  .legend { color: var(--muted); font-size: 0.85rem; text-align: center; }
+
+  #moves { list-style: none; margin: 0; padding: 0; overflow-y: auto; font-size: 1.05rem; flex: 1; }
+  #moves li { display: grid; grid-template-columns: 2.2rem 1fr auto; gap: 0.5rem; padding: 0.2rem 0.3rem; border-bottom: 1px solid var(--grid); }
+  #moves li .n { color: var(--muted); text-align: right; }
+  #moves li .mv { font-weight: 700; }
+  #moves li .refused { color: var(--bad); font-weight: 400; font-size: 0.85rem; }
+  #moves li .err { color: var(--muted); font-variant-numeric: tabular-nums; }
+  #moves li.final .mv { color: var(--good); }
+  #moves li.final.bad .mv { color: var(--bad); }
+
+  footer { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.9rem; }
+  #toast { position: fixed; left: 50%; bottom: 2.5rem; transform: translateX(-50%); padding: 0.6rem 1.2rem; border-radius: 0.5rem;
+    background: var(--ink); color: #fff; font-size: 1.1rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  #toast.show { opacity: 1; }
+  #toast.error { background: var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>V-JEPA 2 <span>· reach goal</span></h1>
+  <div id="status">connecting…</div>
+  <div class="controls">
+    <label class="toggle" id="step-toggle" title="Goals sent from here wait for Next step before every move">
+      <input type="checkbox" id="step-mode"> Step by step</label>
+    <button id="next-btn" hidden title="Make the planned move (→, PageDown or Space)">Next step ▶</button>
+    <button id="cancel-btn" title="Cancel the running goal">Cancel</button>
+    <button id="reset-btn" title="Put the robot back at its start">Reset</button>
+    <select id="runs" title="Saved runs"><option value="">saved runs…</option></select>
+    <select id="speed" title="Replay speed"><option value="1">1×</option><option value="2">2×</option><option value="0.5">½×</option></select>
+    <button id="replay-btn">Replay</button>
+    <button id="live-btn" hidden>Back to live</button>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="camera-card">
+    <h2>Camera <b id="position"></b></h2>
+    <div class="fill">
+      <div class="photo" id="camera-wrap">
+        <img id="camera" alt="">
+        <svg id="overlay"></svg>
+        <div id="hover"></div>
+      </div>
+    </div>
+    <div class="hint" id="camera-hint"></div>
+  </section>
+
+  <section class="card">
+    <h2>Goal photo <b id="goal-text"></b></h2>
+    <div class="fill"><div class="photo"><img id="goal" alt=""></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Every move, pictured <b id="compass-step"></b></h2>
+    <div class="fill"><svg id="compass" viewBox="-215 -215 430 430"></svg></div>
+    <div class="legend" id="compass-legend">darker = predicted closer to the goal · ◯ chosen · - - - way to the goal</div>
+  </section>
+
+  <section class="card">
+    <h2>Error to the goal, per step</h2>
+    <div class="fill"><svg id="chart" viewBox="0 0 400 240" preserveAspectRatio="none"></svg></div>
+  </section>
+
+  <section class="card">
+    <h2>Moves <b id="move-count"></b></h2>
+    <ul id="moves"></ul>
+  </section>
+</main>
+
+<footer>
+  <span>topics: /camera/image_raw · /rig/state · /rig/cmd · action /reach_goal</span>
+  <span id="conn">○ offline</span>
+</footer>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const SVG = "http://www.w3.org/2000/svg";
+const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+const RAMP = ["#eef3fb", "#b9cdf2", "#2f6fdb", "#163d86"];
+const REASONS = { reached: "reached", cycle: "circling", max_steps: "out of moves", stopped: "cancelled",
+                  rig_error: "every move refused" };
+
+let config = { state_names: [], camera: [256, 256], mat: null, can_goal: false, can_reset: false };
+let mode = "live";
+let run = null;          // {start, steps: [], end}
+let position = null;     // latest live state dict
+
+// ------------------------------------------------------------------ helpers
+
+function el(tag, attrs = {}, parent = null) {
+  const e = document.createElementNS(SVG, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function hex(c) { return [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)); }
+function ramp(t) {
+  t = Math.max(0, Math.min(1, t)) * (RAMP.length - 1);
+  const i = Math.min(Math.floor(t), RAMP.length - 2), f = t - i;
+  const a = hex(RAMP[i]), b = hex(RAMP[i + 1]);
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(",")})`;
+}
+function fmtState(s) {
+  if (!s) return "";
+  const names = config.state_names.length ? config.state_names : Object.keys(s);
+  const unit = names.every((n) => n.endsWith("_mm")) ? " mm" : "";
+  return "(" + names.map((n) => Number(s[n]).toFixed(0)).join(", ") + ")" + unit;
+}
+function values(s) { return config.state_names.map((n) => Number(s[n])); }
+let toastTimer = null;
+function toast(text, level = "info") {
+  const t = $("toast");
+  t.textContent = text; t.className = "show" + (level === "error" ? " error" : "");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.className = ""), 3500);
+}
+async function post(path, body = {}) {
+  try {
+    const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || r.statusText);
+    if (d.message) toast(d.message);
+    return d;
+  } catch (e) { toast(e.message, "error"); return null; }
+}
+
+// ------------------------------------------------------------------ status
+
+function setStatus(text, cls = "") {
+  const s = $("status");
+  s.textContent = (mode === "replay" ? "REPLAY · " : "") + text;
+  s.className = cls + (mode === "replay" ? " replay" : "");
+}
+function updateStatus() {
+  if (!run) return setStatus(mode === "replay" ? "loading…" : "ready: click the camera or send a goal", "");
+  const steps = run.steps, last = steps[steps.length - 1];
+  if (!run.end && run.pending) {
+    const p = run.pending, n = p.labels.length;
+    const how = mode === "live" ? " · press Next step" : "";
+    return setStatus(`move ${p.step + 1}: pictured all ${n} moves · best: ${p.planned}${how}`, "waiting");
+  }
+  if (!run.end) {
+    const k = last ? last.step + (last.chosen ? 1 : 0) : 0;
+    const err = last ? ` · error ${last.current_error.toFixed(3)}` : "";
+    return setStatus(`move ${k + 1}: thinking…${err}`, "running");
+  }
+  const e = run.end, moves = `${e.moves} move${e.moves === 1 ? "" : "s"}`;
+  const dist = e.distance_to_goal == null ? "" : ` · ${e.distance_to_goal.toFixed(0)} mm off`;
+  if (e.reached) return setStatus(`✓ REACHED · ${moves}${dist}`, "good");
+  if (e.status === "canceled") return setStatus(`cancelled after ${moves}`, "");
+  const why = REASONS[e.reason] || e.reason;
+  setStatus(`✗ NOT REACHED · ${why} · ${moves}${dist}`, "bad");
+}
+
+// ------------------------------------------------------------------ camera overlay
+
+function toPx(state) {
+  const m = config.mat, [x, y] = values(state);
+  return [m.x0 + x * m.px_per_mm, m.y0 - y * m.px_per_mm];
+}
+function drawOverlay() {
+  const svg = $("overlay"), [h, w] = config.camera;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.replaceChildren();
+  if (!config.mat || !run) return;
+  const pts = [];
+  if (run.start) pts.push(toPx(run.start.start));
+  for (const s of run.steps) if (s.state_after) pts.push(toPx(s.state_after));
+  if (pts.length > 1)
+    el("polyline", { points: pts.map((p) => p.join(",")).join(" "), fill: "none", stroke: "#163d86",
+      "stroke-width": 2.2, "stroke-linejoin": "round", opacity: 0.85 }, svg);
+  pts.forEach((p, i) => el("circle", { cx: p[0], cy: p[1], r: i === 0 ? 4 : 2.6,
+    fill: i === 0 ? "#fff" : "#163d86", stroke: "#163d86", "stroke-width": 1.5 }, svg));
+  const g = run.start && run.start.goal_state;
+  if (g) {
+    const gs = Object.fromEntries(config.state_names.map((n, i) => [n, g[i]]));
+    const [gx, gy] = toPx(gs);
+    el("circle", { cx: gx, cy: gy, r: 13, fill: "none", stroke: "#1b1f24", "stroke-width": 2.5, "stroke-dasharray": "5 4" }, svg);
+    el("circle", { cx: gx, cy: gy, r: 2.5, fill: "#1b1f24" }, svg);
+  }
+}
+function clickToState(ev) {
+  const img = $("camera"), r = img.getBoundingClientRect(), [h, w] = config.camera, m = config.mat;
+  const px = (ev.clientX - r.left) * w / r.width, py = (ev.clientY - r.top) * h / r.height;
+  const x = Math.round((px - m.x0) / m.px_per_mm), y = Math.round((m.y0 - py) / m.px_per_mm);
+  const inside = x >= 0 && y >= 0 && x <= m.travel[0] && y <= m.travel[1];
+  return { x, y, inside };
+}
+
+// ------------------------------------------------------------------ compass
+
+function drawCompass(step) {
+  const svg = $("compass");
+  svg.replaceChildren();
+  const start = run && run.start;
+  if (!start || !step || !step.errors.length) {
+    if (!start) el("text", { x: 0, y: 8, "text-anchor": "middle", fill: "#5b6370", "font-size": 22 }, svg).textContent = "waiting for a goal";
+    return;
+  }
+  const acts = start.actions, sizes = [...new Set(acts.map((a) => Math.max(...a.map(Math.abs))))].sort((a, b) => a - b);
+  const R = sizes.map((_, i) => 55 + (i * 110) / Math.max(1, sizes.length - 1));
+  for (const r of R) el("circle", { cx: 0, cy: 0, r, fill: "none", stroke: "#d9dde3", "stroke-width": 1.5 }, svg);
+  ["N", "NE", "E", "SE", "S", "SW", "W", "NW"].forEach((d, k) => {
+    const th = (k * Math.PI) / 4;
+    el("line", { x1: 0, y1: 0, x2: 178 * Math.sin(th), y2: -178 * Math.cos(th), stroke: "#d9dde3", "stroke-width": 1 }, svg);
+    el("text", { x: 200 * Math.sin(th), y: -200 * Math.cos(th) + 7, "text-anchor": "middle", "font-size": 19,
+      "font-weight": 700, fill: "#5b6370" }, svg).textContent = d;
+  });
+  const unit = (start.labels[0].split(" ")[1] || "").replace(/^[\d.]+/, "");
+  $("compass-legend").textContent = `rings: ${sizes.join(" · ")} ${unit} moves · darker = predicted closer to the goal · ◯ chosen · - - - way to the goal`;
+
+  const g = start.goal_state;
+  if (g) {
+    const [x, y] = values(step.state), dx = g[0] - x, dy = g[1] - y;
+    if (Math.hypot(dx, dy) > 1e-6) {
+      const th = Math.atan2(dx, dy);
+      el("line", { x1: 0, y1: 0, x2: 182 * Math.sin(th), y2: -182 * Math.cos(th), stroke: "#5b6370",
+        "stroke-width": 3, "stroke-dasharray": "9 7" }, svg);
+    }
+  }
+  const improve = step.errors.map((e) => step.current_error - e);
+  const lo = Math.min(...improve), hi = Math.max(...improve);
+  const best = step.errors.indexOf(Math.min(...step.errors));
+  const chosen = step.chosen ? start.labels.indexOf(step.chosen) : -1;
+  acts.forEach((a, i) => {
+    const th = Math.atan2(a[0], a[1]), r = R[sizes.indexOf(Math.max(...a.map(Math.abs)))];
+    const cx = r * Math.sin(th), cy = -r * Math.cos(th);
+    const c = el("circle", { cx, cy, r: 17, fill: ramp(hi > lo ? (improve[i] - lo) / (hi - lo) : 0.5), stroke: "#fff", "stroke-width": 3 }, svg);
+    el("title", {}, c).textContent = `${start.labels[i]}: predicted error ${step.errors[i].toFixed(4)}`;
+    if (step.refused.includes(start.labels[i]))
+      el("path", { d: `M${cx - 11},${cy - 11}L${cx + 11},${cy + 11}M${cx + 11},${cy - 11}L${cx - 11},${cy + 11}`, stroke: "#c8463a", "stroke-width": 4 }, svg);
+  });
+  const mark = chosen >= 0 ? chosen : best;
+  const a = acts[mark], th = Math.atan2(a[0], a[1]), r = R[sizes.indexOf(Math.max(...a.map(Math.abs)))];
+  el("circle", { cx: r * Math.sin(th), cy: -r * Math.cos(th), r: 25, fill: "none", stroke: "#1b1f24", "stroke-width": 3.5 }, svg);
+  el("circle", { cx: 0, cy: 0, r: 7, fill: "#f28a1a", stroke: "#fff", "stroke-width": 2 }, svg);
+}
+
+// ------------------------------------------------------------------ chart
+
+function drawChart() {
+  const svg = $("chart");
+  svg.replaceChildren();
+  if (!run || !(run.steps.length || run.pending)) return;
+  const W = 400, H = 240, L = 46, B = 30, T = 12, Rm = 12;
+  const errs = run.steps.map((s) => s.current_error), thr = run.start ? run.start.threshold : null;
+  if (run.pending) errs.push(run.pending.current_error);
+  const maxY = Math.max(...errs, thr || 0) * 1.12 || 1, n = Math.max(errs.length - 1, 4);
+  const X = (k) => L + (k * (W - L - Rm)) / n, Y = (v) => T + (1 - v / maxY) * (H - T - B);
+  el("line", { x1: L, y1: Y(0), x2: W - Rm, y2: Y(0), stroke: "#5b6370", "stroke-width": 1.5 }, svg);
+  el("line", { x1: L, y1: T, x2: L, y2: Y(0), stroke: "#5b6370", "stroke-width": 1.5 }, svg);
+  for (let k = 0; k <= n; k++)
+    el("text", { x: X(k), y: H - 8, "text-anchor": "middle", "font-size": 14, fill: "#5b6370" }, svg).textContent = k;
+  [0, maxY / 2, maxY].forEach((v) =>
+    el("text", { x: L - 6, y: Y(v) + 5, "text-anchor": "end", "font-size": 13, fill: "#5b6370" }, svg).textContent = v.toFixed(2));
+  if (thr != null) {
+    el("line", { x1: L, y1: Y(thr), x2: W - Rm, y2: Y(thr), stroke: "#1f8a4c", "stroke-width": 2, "stroke-dasharray": "7 5" }, svg);
+    el("text", { x: L + 6, y: Y(thr) + 16, "text-anchor": "start", "font-size": 13, fill: "#1f8a4c", "font-weight": 700 }, svg).textContent = "close enough";
+  }
+  el("polyline", { points: errs.map((e, k) => `${X(k)},${Y(e)}`).join(" "), fill: "none", stroke: "#2f6fdb", "stroke-width": 3.5, "stroke-linejoin": "round" }, svg);
+  errs.forEach((e, k) => el("circle", { cx: X(k), cy: Y(e), r: 5, fill: "#2f6fdb", stroke: "#fff", "stroke-width": 2 }, svg));
+}
+
+// ------------------------------------------------------------------ moves list
+
+function drawMoves() {
+  const ul = $("moves");
+  ul.replaceChildren();
+  if (!run) { $("move-count").textContent = ""; return; }
+  for (const s of run.steps) {
+    const li = document.createElement("li");
+    const moved = s.chosen && s.state_after;
+    const refused = s.refused.length ? ` <span class="refused">(refused ${s.refused.join(", ")})</span>` : "";
+    if (moved) {
+      li.innerHTML = `<span class="n">${s.step + 1}</span><span class="mv">${s.chosen}${refused}</span>` +
+        `<span class="err">→ ${fmtState(s.state_after)}</span>`;
+    } else {
+      const done = run.end && s === run.steps[run.steps.length - 1];
+      if (!done) continue;
+      li.className = "final" + (run.end.reached ? "" : " bad");
+      li.innerHTML = `<span class="n"></span><span class="mv">${run.end.reached ? "at the goal" : (REASONS[run.end.reason] || run.end.reason)}${refused}</span>` +
+        `<span class="err">error ${s.current_error.toFixed(3)}</span>`;
+    }
+    ul.appendChild(li);
+  }
+  if (run.pending && !run.end) {
+    const li = document.createElement("li");
+    li.className = "pending";
+    li.innerHTML = `<span class="n">${run.pending.step + 1}</span><span class="mv">${run.pending.planned}?</span>` +
+      `<span class="err">${mode === "live" ? "waiting for Next step" : "waiting"}</span>`;
+    ul.appendChild(li);
+  }
+  const moves = run.steps.filter((s) => s.chosen && s.state_after).length;
+  $("move-count").textContent = moves ? `${moves}` : "";
+  ul.scrollTop = ul.scrollHeight;
+}
+
+// ------------------------------------------------------------------ redraw everything
+
+function redraw() {
+  const steps = run ? run.steps : [];
+  const scored = (run && run.pending) || [...steps].reverse().find((s) => s.errors.length);
+  drawCompass(scored);
+  $("compass-step").textContent = scored ? `move ${scored.step + 1}` : "";
+  drawChart();
+  drawMoves();
+  drawOverlay();
+  const g = run && run.start && run.start.goal_state;
+  $("goal-text").textContent = g ? fmtState(Object.fromEntries(config.state_names.map((n, i) => [n, g[i]]))) : "";
+  const last = steps[steps.length - 1];
+  const where = last ? (last.state_after || last.state) : run && run.start ? run.start.start : position;
+  $("position").textContent = (mode === "live" && position) ? fmtState(position) : fmtState(where);
+  updateStatus();
+  const waiting = !!(mode === "live" && run && run.pending && !run.end);
+  $("next-btn").hidden = !waiting;
+  $("next-btn").disabled = !waiting;
+  $("step-toggle").classList.toggle("on", $("step-mode").checked);
+  $("cancel-btn").disabled = !(config.can_goal && mode === "live" && run && !run.end);
+  $("reset-btn").disabled = !(config.can_reset && mode === "live" && !(run && !run.end));
+  $("live-btn").hidden = mode !== "replay";
+  $("camera-wrap").classList.toggle("clickable", !!(config.mat && config.can_goal));
+}
+
+function onEvent(ev) {
+  switch (ev.type) {
+    case "mode":
+      mode = ev.mode;
+      if (mode === "replay") run = null;
+      break;
+    case "camera": $("camera").src = ev.src; return;
+    case "goal_image": $("goal").src = ev.src; return;
+    case "state": position = ev.state; if (mode === "live") $("position").textContent = fmtState(position); return;
+    case "start": run = { start: ev, steps: [], end: null }; break;
+    case "pending": if (!run) run = { start: null, steps: [], end: null }; run.pending = ev; break;
+    case "step": if (!run) run = { start: null, steps: [], end: null }; run.pending = null; run.steps.push(ev); break;
+    case "end": if (!run) run = { start: null, steps: [], end: null }; run.pending = null; run.end = ev; break;
+    case "notice": toast(ev.text, ev.level); return;
+    case "clear": run = null; $("goal").src = BLANK; break;
+    default: return;
+  }
+  redraw();
+}
+
+// ------------------------------------------------------------------ wiring
+
+async function loadRuns() {
+  try {
+    const runs = await (await fetch("/runs")).json(), sel = $("runs"), keep = sel.value;
+    sel.replaceChildren(new Option("saved runs…", ""), ...runs.map((r) => new Option(r, r)));
+    if (runs.includes(keep)) sel.value = keep;
+  } catch (e) { /* offline */ }
+}
+
+function connect() {
+  const es = new EventSource("/events");
+  es.onopen = () => { $("conn").textContent = "● live connection"; $("conn").style.color = "#1f8a4c"; };
+  es.onmessage = (m) => onEvent(JSON.parse(m.data));
+  es.onerror = () => { $("conn").textContent = "○ reconnecting…"; $("conn").style.color = "#c8463a"; };
+}
+
+async function main() {
+  try { config = await (await fetch("/config")).json(); } catch (e) { toast("no dashboard server", "error"); }
+  const hint = config.mat && config.can_goal ? "click on the mat to send a goal" : config.can_goal ? "" : "read-only";
+  $("camera-hint").textContent = hint;
+  const wrap = $("camera-wrap");
+  wrap.addEventListener("mousemove", (ev) => {
+    if (!config.mat) return;
+    const p = clickToState(ev), h = $("hover");
+    h.style.display = "block";
+    h.textContent = p.inside ? `(${p.x}, ${p.y}) mm` : "off the mat";
+  });
+  wrap.addEventListener("mouseleave", () => ($("hover").style.display = "none"));
+  wrap.addEventListener("click", (ev) => {
+    if (!config.mat || !config.can_goal) return;
+    const p = clickToState(ev);
+    if (!p.inside) return toast("that's off the mat", "error");
+    post("/goal", { state: [p.x, p.y], step_by_step: $("step-mode").checked });
+  });
+  $("cancel-btn").onclick = () => post("/cancel");
+  $("next-btn").onclick = () => post("/next");
+  const mode0 = localStorage.getItem("vjepa-step-mode") === "1";
+  $("step-mode").checked = mode0;
+  $("step-mode").addEventListener("change", () => {
+    localStorage.setItem("vjepa-step-mode", $("step-mode").checked ? "1" : "0");
+    redraw();
+  });
+  // a presentation clicker sends PageDown / → ; Space works too (not while a menu has focus)
+  document.addEventListener("keydown", (ev) => {
+    if (!["ArrowRight", "PageDown", " "].includes(ev.key) || ev.target.tagName === "SELECT") return;
+    if ($("next-btn").disabled) return;
+    ev.preventDefault();
+    post("/next");
+  });
+  $("reset-btn").onclick = () => post("/reset");
+  $("replay-btn").onclick = () => {
+    const r = $("runs").value;
+    if (!r) return toast("pick a saved run first", "error");
+    post("/replay", { run: r, speed: Number($("speed").value) });
+  };
+  $("live-btn").onclick = () => post("/live");
+  $("runs").addEventListener("focus", loadRuns);
+  await loadRuns();
+  setInterval(loadRuns, 15000);
+  connect();
+  redraw();
+}
+main();
+</script>
+</body>
+</html>

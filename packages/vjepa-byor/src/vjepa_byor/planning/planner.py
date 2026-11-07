@@ -195,12 +195,16 @@ class Planner:
         start_state: RigState,
         on_step: Callable[[PlanStep], None] | None = None,
         should_stop: Callable[[], bool] | None = None,
+        before_move: Callable[[PlanStep, int], bool] | None = None,
     ) -> PlanResult:
         """Plan and move until the goal is reached, ``max_steps`` moves are made, or ``should_stop()`` is true.
 
         ``start_state`` is where the rig is now (the interfaces can't read it
         without moving). ``on_step`` is called after every decision, with the
-        move's outcome filled in.
+        move's outcome filled in. ``before_move(step, best)`` is called after
+        the basket is scored and before anything moves, with the index of the
+        best-scoring action; it may block (e.g. to wait for a person: step-by-step
+        mode), and returning ``False`` stops the run (reason ``stopped``).
         """
         cfg = self.config
         z_goal = self.model.encode(goal_photo)
@@ -238,6 +242,10 @@ class Planner:
                 else "stopped" if should_stop is not None and should_stop()
                 else None
             )
+            if reason is None and before_move is not None:
+                assert scores is not None
+                if not before_move(step, int(scores.order()[0])):
+                    reason = "stopped"
             if reason is None:
                 assert scores is not None
                 # a refused move (e.g. past the travel limits) leaves the rig where it was: try the next best

@@ -189,3 +189,21 @@ def test_coming_back_to_an_earlier_state_stops_the_run():
             goal_photo(17, 4), GridState(rig.transport.responder.x, rig.transport.responder.y)
         )
     assert endless.reason == "max_steps" and endless.moves == 12
+
+
+def test_before_move_sees_every_decision_before_the_move_and_can_stop_the_run():
+    rig = make_grid_rig()
+    model = PerfectModel(rig)
+    seen = []
+
+    def before_move(step, best):
+        seen.append((step.step, step.state, step.chosen, step.labels[best], step.errors[best] == min(step.errors)))
+        return len(seen) < 2  # let one move through, stop at the second
+
+    with rig:
+        result = Planner(model, rig, PlannerConfig(threshold=0.0)).run(
+            goal_photo(17, 4), start_state(rig), before_move=before_move)
+    assert result.reason == "stopped" and result.moves == 1
+    assert [s[2] for s in seen] == [None, None]  # called before anything was chosen or moved
+    assert all(s[4] for s in seen)  # best = lowest predicted error
+    assert seen[1][1] == result.steps[0].state_after  # the second decision starts where the first move ended

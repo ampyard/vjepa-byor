@@ -5,6 +5,7 @@ The model is a stand-in that reads the carriage position from the photo, so thes
 server, not V-JEPA.
 """
 
+import json
 import threading
 import time
 from pathlib import Path
@@ -194,3 +195,113 @@ def test_cancel_stops_the_run_and_a_second_goal_waits_its_turn(slow_stack):
     assert response.result.reason == "stopped"
     assert response.result.moves < 5
     assert s.send(goal_state=[100.0, 75.0]).accepted  # free again
+
+
+# The dashboard's ROS side, on the same stack
+
+
+def test_dashboard_sends_a_goal_and_records_the_whole_run(stack, tmp_path):
+    from vjepa_byor.dashboard import Hub
+    from vjepa_byor.ros2.config import CameraConfig, StateConfig
+    from vjepa_byor.ros2.dashboard import DashboardNode
+
+    config = yaml.safe_load(SIM_ROBOT.read_text())
+    hub = Hub(tmp_path)
+    node = DashboardNode(hub, CameraConfig.parse(config["camera"]), StateConfig.parse(config["state"]),
+                         reset_service="/rig/reset", context=stack.context)
+    stack.executor.add_node(node)
+    try:
+        wait(lambda: node.client.server_is_ready())
+        wait(lambda: "camera" in hub._latest and "state" in hub._latest)
+        assert hub._latest["camera"]["src"].startswith("data:image/png;base64,")
+        assert node.commands.send_goal([110.0, 70.0]).startswith("goal sent")
+        wait(lambda: hub.runs())
+        events = [e for _, e in hub.load(hub.runs()[0])]
+        kinds = [e["type"] for e in events]
+        assert kinds[0] == "camera" and "goal_image" in kinds
+        assert kinds.count("start") == 1 and kinds[-1] == "end" and "step" in kinds
+        start, end = events[kinds.index("start")], events[-1]
+        assert start["goal_state"] == [110.0, 70.0] and len(start["labels"]) == 24
+        assert end["status"] == "succeeded" and end["final_state"] == {"x_mm": 110.0, "y_mm": 70.0}
+        wait(lambda: hub._latest["state"]["state"] == {"x_mm": 110.0, "y_mm": 70.0})
+        # reset: back to the start
+        assert node.commands.reset() == "resetting"
+        wait(lambda: hub._latest["state"]["state"] == {"x_mm": 100.0, "y_mm": 75.0})
+    finally:
+        stack.executor.remove_node(node)
+        node.destroy_node()
+
+
+def test_dashboard_cancels_a_goal_sent_by_someone_else(slow_stack, tmp_path):
+    from vjepa_byor.dashboard import Hub
+    from vjepa_byor.ros2.config import CameraConfig, StateConfig
+    from vjepa_byor.ros2.dashboard import DashboardNode
+
+    s = slow_stack
+    config = yaml.safe_load(SIM_ROBOT.read_text())
+    node = DashboardNode(Hub(tmp_path), CameraConfig.parse(config["camera"]), StateConfig.parse(config["state"]),
+                         context=s.context)
+    s.executor.add_node(node)
+    try:
+        feedback = []
+        handle = s.send(lambda msg: feedback.append(msg), goal_state=[180.0, 20.0])
+        wait(lambda: feedback)
+        wait(lambda: node.cancel_client.service_is_ready())
+        assert node.commands.cancel() == "cancelling"
+        assert s.result(handle).status == GoalStatus.STATUS_CANCELED
+    finally:
+        s.executor.remove_node(node)
+        node.destroy_node()
+
+
+# Step-by-step mode
+
+
+def call_next(stack):
+    from std_srvs.srv import Trigger
+
+    client = getattr(stack, "next_client", None) or stack.client_node.create_client(Trigger, "/reach_goal/next")
+    stack.next_client = client
+    assert client.wait_for_service(timeout_sec=5)
+    future = client.call_async(Trigger.Request())
+    wait(future.done)
+    return future.result()
+
+
+def test_step_by_step_waits_for_next_before_every_move(stack):
+    from std_msgs.msg import String
+
+    events = []
+    stack.client_node.create_subscription(String, "/reach_goal/events", lambda m: events.append(json.loads(m.data)), 50)
+    feedback = []
+    handle = stack.send(lambda msg: feedback.append(msg.feedback), goal_state=[127.0, 61.0], step_by_step=True)
+    assert handle.accepted
+    moves = 0
+    while True:
+        wait(lambda: any(e["type"] == "end" for e in events) or
+             sum(e["type"] == "pending" for e in events) > moves)
+        if any(e["type"] == "end" for e in events):
+            break
+        time.sleep(0.3)
+        assert len(feedback) == moves  # nothing moved while it waits
+        pending = [e for e in events if e["type"] == "pending"][-1]
+        assert pending["step"] == moves and pending["chosen"] is None and len(pending["errors"]) == 24
+        assert call_next(stack).success
+        moves += 1
+        wait(lambda: len(feedback) >= moves)  # after the last move, the final "at the goal" step may follow at once
+        assert feedback[moves - 1].chosen == pending["planned"]  # it made the move it showed
+    response = stack.result(handle)
+    assert response.status == GoalStatus.STATUS_SUCCEEDED
+    assert response.result.moves == moves >= 3
+    assert not call_next(stack).success  # nothing waiting any more
+
+
+def test_step_by_step_cancel_while_waiting(stack):
+    feedback = []
+    handle = stack.send(lambda msg: feedback.append(msg), goal_state=[127.0, 61.0], step_by_step=True)
+    time.sleep(0.5)
+    cancel = handle.cancel_goal_async()
+    wait(cancel.done)
+    response = stack.result(handle)
+    assert response.status == GoalStatus.STATUS_CANCELED and response.result.moves == 0
+    assert all(f.feedback.chosen == "" for f in feedback)  # only the final "stopped here" step, no move
