@@ -58,6 +58,18 @@ def image_to_tensor(msg: Any, resolution: tuple[int, int]) -> torch.Tensor:
     return image
 
 
+def tensor_to_image(photo: torch.Tensor, stamp: Any, frame_id: str = "") -> Any:
+    """A ``(3, H, W)`` ``uint8`` photo as an ``rgb8`` ``sensor_msgs/Image``."""
+    from sensor_msgs.msg import Image
+
+    _, height, width = photo.shape
+    msg = Image()
+    msg.header.stamp, msg.header.frame_id = stamp, frame_id
+    msg.height, msg.width, msg.encoding, msg.is_bigendian, msg.step = height, width, "rgb8", 0, 3 * width
+    msg.data = photo.permute(1, 2, 0).contiguous().numpy().tobytes()
+    return msg
+
+
 def _qos(name: str):
     from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 
@@ -257,6 +269,12 @@ class Ros2ActionTransport:
 
     def close(self) -> None:
         self.link.close()
+
+    def current_state(self) -> RigState:
+        """The newest state the robot published, without moving (the planner's start state)."""
+        self.link.require_open()
+        with self.link.cond:
+            return self.link.state_type(*self.link.state_values)
 
     def execute(self, action: torch.Tensor, timeout: float | None = None) -> RigState:
         link, command = self.link, self.link.command

@@ -3,7 +3,6 @@
 Skipped without rclpy: run in the ROS 2 container, ``docker/run.sh python -m pytest packages``.
 """
 
-import threading
 import time
 from pathlib import Path
 
@@ -13,50 +12,20 @@ import torch
 rclpy = pytest.importorskip("rclpy")
 yaml = pytest.importorskip("yaml")
 
-from rclpy.executors import SingleThreadedExecutor  # noqa: E402
-from rclpy.parameter import Parameter  # noqa: E402
-
 from vjepa_byor import RigError, load_rig  # noqa: E402
 from vjepa_byor.testing.collector_conformance import CollectorConformanceTests  # noqa: E402
 from vjepa_byor.testing.conformance import RigConformanceTests  # noqa: E402
 from vjepa_byor_sim import SimRig  # noqa: E402
-from vjepa_byor_sim.ros2_bridge import SimBridge  # noqa: E402
+
+from .conftest import BridgeThread  # noqa: E402
 
 DOMAIN_ID = 98  # apart from the bridge tests and anything else running
 SIM_ROBOT = Path(__file__).parents[3] / "apps" / "ros2" / "sim_robot.yaml"
 
 
-class BridgeThread:
-    """The bridge node in its own context, spinning on a background thread."""
-
-    def __init__(self, start_mm=(100.0, 75.0), rate_hz=10.0):
-        self.context = rclpy.Context()
-        rclpy.init(context=self.context, domain_id=DOMAIN_ID)
-        self.node = SimBridge(
-            context=self.context,
-            parameter_overrides=[Parameter("start_mm", value=list(start_mm)), Parameter("rate_hz", value=rate_hz)],
-        )
-        self.executor = SingleThreadedExecutor(context=self.context)
-        self.executor.add_node(self.node)
-        self.stop = threading.Event()
-        self.thread = threading.Thread(target=self.spin, daemon=True)
-        self.thread.start()
-
-    def spin(self):
-        while not self.stop.is_set():
-            self.executor.spin_once(timeout_sec=0.05)
-
-    def close(self):
-        self.stop.set()
-        self.thread.join()
-        self.executor.shutdown()
-        self.node.destroy_node()
-        rclpy.try_shutdown(context=self.context)
-
-
 @pytest.fixture
 def bridge():
-    b = BridgeThread()
+    b = BridgeThread(DOMAIN_ID)
     yield b
     b.close()
 
@@ -98,7 +67,7 @@ def test_a_refused_move_raises_and_the_next_one_works(bridge):
 def test_periodic_republish_is_never_taken_for_the_answer(bridge):
     # with 100 Hz republishing, a fresh stamp on the old position would often pass for the answer
     bridge.close()
-    fast = BridgeThread(rate_hz=100.0)
+    fast = BridgeThread(DOMAIN_ID, rate_hz=100.0)
     try:
         with ros2_rig() as rig:
             x = 100.0

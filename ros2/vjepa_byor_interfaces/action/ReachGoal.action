@@ -1,0 +1,29 @@
+# Drive the robot until its camera view matches a goal (vjepa-byor planner).
+#
+# Give exactly one goal:
+#   goal_state: a rig state to reach, in the rig's own units (e.g. [x_mm, y_mm]); the server
+#               renders the goal photo, so it needs a goal renderer (the sim has one)
+#   goal_image: the goal photo
+float64[] goal_state
+sensor_msgs/Image goal_image
+uint32 max_steps                # 0: the server's default
+---
+bool reached                    # the planner's verdict: the photo's error fell to the threshold
+string reason                   # reached, cycle, max_steps, stopped (cancelled), rig_error or error: ...
+string[] state_names
+float64[] final_state
+uint32 moves
+float32 final_error             # latent error of the last photo to the goal
+float64 distance_to_goal        # from final_state to goal_state, in state units; -1 for an image goal
+---
+uint32 step
+string[] state_names
+float64[] state                 # where the rig was when it decided
+float32 error                   # latent error of the current photo to the goal
+string chosen                   # the move made; empty when the run ends at this step
+float32 chosen_error            # its predicted error
+string[] refused                # better moves the rig refused first
+float64[] state_after           # empty when no move was made
+string[] labels                 # every candidate move ...
+float32[] errors                # ... and its predicted error (empty when the run ends at this step)
+float32 seconds                 # time to decide (encode + score), not the move

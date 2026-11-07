@@ -15,6 +15,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /usr/local/bin/
 
+# Our ROS 2 interfaces (the ReachGoal action), built with colcon and sourced on
+# start after ROS itself. Rebuild the image after changing anything in ros2/.
+COPY ros2 /opt/vjepa_ros2/src
+RUN . /opt/ros/jazzy/setup.sh \
+    && cd /opt/vjepa_ros2 \
+    && colcon build --merge-install --install-base /opt/vjepa_ros2/install \
+        --base-paths src --event-handlers console_direct- \
+    && rm -rf build log \
+    && sed -i 's#^exec "\$@"#source /opt/vjepa_ros2/install/setup.bash --\nexec "$@"#' /ros_entrypoint.sh
+
 # The venv includes system site-packages (rclpy's deps); ROS's own Python
 # packages come from PYTHONPATH once /opt/ros/jazzy/setup.bash is sourced.
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -43,4 +53,4 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     && chmod -R a+rX /opt/venv
 
 # docker exec shells get ROS too (docker run goes through ros_entrypoint.sh)
-RUN echo 'source /opt/ros/jazzy/setup.bash' >> /etc/bash.bashrc
+RUN echo 'source /opt/ros/jazzy/setup.bash && source /opt/vjepa_ros2/install/setup.bash' >> /etc/bash.bashrc

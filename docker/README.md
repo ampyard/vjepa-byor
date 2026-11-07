@@ -66,6 +66,19 @@ xhost +local:                     # once per login, on the host
 docker/run.sh ros2 run rqt_image_view rqt_image_view
 ```
 
+## The demo: ROS 2 end to end
+
+Three terminals (each `docker/run.sh` is a new container; they find each other through DDS):
+
+```bash
+docker/run.sh python -m vjepa_byor_sim.ros2_bridge          # 1: the simulated robot
+docker/run.sh python apps/ros2/reach_goal_server.py         # 2: the planner as /reach_goal (GPU)
+docker/run.sh ros2 action send_goal --feedback /reach_goal \
+    vjepa_byor_interfaces/action/ReachGoal "{goal_state: [120, 60]}"   # 3: send a goal
+```
+
+The robot is described by `apps/ros2/sim_robot.yaml` (the built-in `ros2` rig). The same file collects data over ROS 2: `docker/run.sh vjepa-byor collect --rig ros2 --rig-config apps/ros2/sim_robot.yaml --out data/ros2-sim`. The `ReachGoal` action comes from `ros2/vjepa_byor_interfaces`, built into the image; rebuild after changing it.
+
 ## Check that it works
 
 ```bash
