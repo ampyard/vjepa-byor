@@ -1,0 +1,39 @@
+# The simulated stage behind the ROS 2 bridge node (python -m vjepa_byor_sim.ros2_bridge),
+# used as the built-in ros2 rig:
+#
+#   vjepa-byor collect --rig ros2 --rig-config apps/ros2/sim_robot.yaml --out data/ros2-sim --num-samples 50
+#
+# The rig state and actions are in millimetres, as with the sim rig, so sim-trained checkpoints
+# work unchanged; ROS speaks metres, hence the scales. Format: vjepa_byor/ros2/config.py
+
+camera:
+  topic: /camera/image_raw        # sensor_msgs/msg/Image
+  resolution: [256, 256]          # [height, width] the model sees
+  qos: latched
+
+state:
+  topic: /rig/state
+  type: sensor_msgs/msg/JointState
+  qos: latched
+  fields:                         # the rig state, in this order
+    - {name: x_mm, joint: x, scale: 1000}
+    - {name: y_mm, joint: y, scale: 1000}
+
+command:
+  topic: /rig/cmd
+  type: geometry_msgs/msg/Vector3Stamped
+  fields:                         # one per action dimension: field = action * scale
+    - {field: vector.x, scale: 0.001}
+    - {field: vector.y, scale: 0.001}
+  timeout: 5.0                    # seconds to wait for the state after a command
+  refused_if_unchanged: true      # the bridge answers a refused move with an unchanged state
+
+actions:                          # the moves the planner chooses from: 8 directions x 3 sizes
+  compass: [1, 5, 20]
+  unit: mm
+
+mapping:                          # into V-JEPA 2-AC's 7-D input, in metres
+  action_slots: [x, y]
+  state_slots: [x, y]
+  action_scale: 0.001
+  state_scale: 0.001

@@ -7,6 +7,9 @@ one; options passed to :func:`load_rig` go to that callable::
     [project.entry-points."vjepa_byor.rigs"]
     esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
+The ``ros2`` rig ships with the core library and is always available, without
+an entry point (:mod:`vjepa_byor.ros2`, configured with ``--rig-config``).
+
 Rigs can also be registered in-process with :func:`register_rig`, which is
 handy in notebooks and tests.
 """
@@ -23,6 +26,9 @@ ENTRY_POINT_GROUP = "vjepa_byor.rigs"
 
 RigFactory = Callable[..., Rig]
 
+# Rigs that ship inside vjepa-byor; listed like installed plugins
+BUILTIN_RIGS = [EntryPoint("ros2", "vjepa_byor.ros2:Ros2Rig", ENTRY_POINT_GROUP)]
+
 _registered: dict[str, Rig | RigFactory] = {}
 
 
@@ -31,7 +37,7 @@ class RigNotFoundError(LookupError):
 
 
 def _entry_points() -> list[EntryPoint]:
-    return list(entry_points(group=ENTRY_POINT_GROUP))
+    return BUILTIN_RIGS + list(entry_points(group=ENTRY_POINT_GROUP))
 
 
 def _plugin_targets() -> dict[str, EntryPoint]:

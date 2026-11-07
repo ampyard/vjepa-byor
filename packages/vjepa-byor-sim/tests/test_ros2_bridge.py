@@ -25,6 +25,10 @@ def ros():
     rclpy.try_shutdown(context=context)
 
 
+def ns(stamp):
+    return stamp.sec * 1_000_000_000 + stamp.nanosec
+
+
 class Harness:
     def __init__(self, context, start_mm=(40.0, 100.0)):
         self.bridge = SimBridge(
@@ -49,13 +53,15 @@ class Harness:
             self.executor.spin_once(timeout_sec=0.05)
 
     def send(self, dx_m, dy_m):
-        n = len(self.states)
+        """Sends a move and returns the answer: the first state stamped after the command."""
         self.spin_until(lambda: self.cmd.get_subscription_count() > 0)
         msg = Vector3Stamped()
         msg.header.stamp = self.client.get_clock().now().to_msg()
         msg.vector.x, msg.vector.y = dx_m, dy_m
+        sent = ns(msg.header.stamp)
         self.cmd.publish(msg)
-        self.spin_until(lambda: len(self.states) > n and len(self.images) >= len(self.states))
+        self.spin_until(lambda: self.states and ns(self.states[-1].header.stamp) > sent
+                        and self.images and ns(self.images[-1].header.stamp) > sent)
         return self.states[-1]
 
     def close(self):
@@ -107,3 +113,16 @@ def test_reset_puts_the_carriage_back_at_the_start(harness):
     harness.spin_until(future.done)
     assert future.result().success
     harness.spin_until(lambda: list(harness.states[-1].position) == pytest.approx([0.040, 0.100]))
+
+
+def test_periodic_republish_keeps_the_stamp_of_the_last_command(ros):
+    h = Harness(ros)
+    try:
+        h.bridge.create_timer(0.01, h.bridge.republish)
+        answer = h.send(0.005, 0.0)
+        n = len(h.states)
+        h.spin_until(lambda: len(h.states) >= n + 3)
+        assert all(s.header.stamp == answer.header.stamp for s in h.states[n:])
+        assert all(list(s.position) == pytest.approx([0.045, 0.100]) for s in h.states[n:])
+    finally:
+        h.close()

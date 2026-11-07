@@ -12,9 +12,11 @@ Topics (SI units, as ROS expects):
 - ``/rig/reset`` (``std_srvs/Trigger``, service): puts the carriage back at ``start_mm``
 
 The photo and the state are published together with the same ``header.stamp``, so they can be
-matched. They go out at ``rate_hz`` and also right after every command, *including a refused one*
-(a move that would leave the travel area): a state stamped after the command means the move has
-finished, and an unchanged position means it was refused. Moves are instant.
+matched. They go out right after every command, *including a refused one* (a move that would leave
+the travel area), with a new stamp: a state stamped after the command means the move has finished,
+and an unchanged position means it was refused. Moves are instant. In between they are repeated at
+``rate_hz`` with the stamp of the last command (or reset): the view has not changed since, and a
+fresh stamp there could pass for the answer to a command the bridge has not handled yet.
 
 Needs ``rclpy`` from a sourced ROS 2 environment (see ``docker/README.md``); nothing else in this
 package imports it.
@@ -84,13 +86,14 @@ class SimBridge(Node):
         self.camera = SimCamera(self.stage, resolution)
         self._photo: Tensor | None = None
         self._photo_at: tuple[float, float] | None = None
+        self._stamp: Time | None = None  # when the current state was last set or confirmed
 
         self.image_pub = self.create_publisher(Image, "/camera/image_raw", LATCHED)
         self.state_pub = self.create_publisher(JointState, "/rig/state", LATCHED)
         self.create_subscription(Vector3Stamped, "/rig/cmd", self.on_cmd, 10)
         self.create_service(Trigger, "/rig/reset", self.on_reset)
         if rate_hz > 0:
-            self.create_timer(1.0 / rate_hz, self.publish)
+            self.create_timer(1.0 / rate_hz, self.republish)
 
         self.get_logger().info(
             f"sim stage {travel[0]:g} x {travel[1]:g} mm, carriage at {self._where()}, "
@@ -109,7 +112,15 @@ class SimBridge(Node):
         return self._photo
 
     def publish(self) -> None:
-        stamp = self.get_clock().now().to_msg()
+        """Publishes the current photo and state with a new stamp (after a command, a reset or at start)."""
+        self._stamp = self.get_clock().now().to_msg()
+        self._send(self._stamp)
+
+    def republish(self) -> None:
+        """The periodic repeat: same view, same stamp."""
+        self._send(self._stamp)
+
+    def _send(self, stamp: Time) -> None:
         self.image_pub.publish(image_msg(self.photo(), stamp, self.camera_frame))
         self.state_pub.publish(joint_state_msg(self.stage.x_mm, self.stage.y_mm, stamp, self.stage_frame))
 
