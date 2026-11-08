@@ -26,9 +26,9 @@ jobs:
           enable-cache: true
 
       - name: Install the packages with CPU-only torch
-        # Not `uv sync`: the lockfile has CUDA torch (several GB), and no test here needs a GPU
+        # Not `uv sync`: the lockfile has CUDA torch (several GB), and no test here needs a GPU.
+        # setup-uv already created and activated .venv (because of python-version), so install into it.
         run: |
-          uv venv
           uv pip install --torch-backend cpu \
             -e "packages/vjepa-byor[testing,ros2]" \
             -e packages/vjepa-byor-esp32-stepper
