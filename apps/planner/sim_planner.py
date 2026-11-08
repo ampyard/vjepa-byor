@@ -26,7 +26,7 @@ import torch
 
 from vjepa_byor.planning import Planner, PlannerConfig, PlanStep, make_scorer
 from vjepa_byor.predictor import ActionPredictor, load_finetuned, load_pretrained
-from vjepa_byor_sim import DEFAULT_TRAVEL_MM, SimRig
+from vjepa_byor.sim import DEFAULT_TRAVEL_MM, SimRig
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CHECKPOINT = ROOT / "checkpoints" / "sim-10k"

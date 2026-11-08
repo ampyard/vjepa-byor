@@ -13,7 +13,7 @@ from collections.abc import Sequence
 
 import torch
 
-from vjepa_byor_sim.stage import SimStage
+from vjepa_byor.sim.stage import SimStage
 
 # V-JEPA 2-AC's input size; the camera service (backlog module 8) must match it
 DEFAULT_RESOLUTION = (256, 256)

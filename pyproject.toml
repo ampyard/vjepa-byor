@@ -3,7 +3,7 @@ name = "vjepa-byor-workspace"
 version = "0.0.0"
 description = "vjepa-byor monorepo (workspace root, not published)"
 requires-python = ">=3.11"
-dependencies = ["vjepa-byor[vjepa]", "vjepa-byor-esp32-stepper", "vjepa-byor-sim"]
+dependencies = ["vjepa-byor[vjepa]", "vjepa-byor-esp32-stepper"]
 
 [tool.uv]
 package = false
@@ -14,7 +14,6 @@ members = ["packages/*"]
 [tool.uv.sources]
 vjepa-byor = { workspace = true }
 vjepa-byor-esp32-stepper = { workspace = true }
-vjepa-byor-sim = { workspace = true }
 
 [dependency-groups]
 dev = ["pytest>=8"]

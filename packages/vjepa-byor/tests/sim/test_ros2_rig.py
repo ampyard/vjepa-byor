@@ -15,12 +15,12 @@ yaml = pytest.importorskip("yaml")
 from vjepa_byor import RigError, load_rig  # noqa: E402
 from vjepa_byor.testing.collector_conformance import CollectorConformanceTests  # noqa: E402
 from vjepa_byor.testing.conformance import RigConformanceTests  # noqa: E402
-from vjepa_byor_sim import SimRig  # noqa: E402
+from vjepa_byor.sim import SimRig  # noqa: E402
 
 from .conftest import BridgeThread  # noqa: E402
 
 DOMAIN_ID = 98  # apart from the bridge tests and anything else running
-SIM_ROBOT = Path(__file__).parents[3] / "apps" / "ros2" / "sim_robot.yaml"
+SIM_ROBOT = Path(__file__).parents[4] / "apps" / "ros2" / "sim_robot.yaml"
 
 
 @pytest.fixture

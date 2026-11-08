@@ -2,7 +2,7 @@
 
 In the ROS 2 container (docker/run.sh), with the sim bridge running in another terminal:
 
-    python -m vjepa_byor_sim.ros2_bridge
+    python -m vjepa_byor.sim.ros2_bridge
     python apps/ros2/reach_goal_server.py
     ros2 action send_goal --feedback /reach_goal vjepa_byor_interfaces/action/ReachGoal "{goal_state: [120, 60]}"
 
@@ -31,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def sim_renderer(resolution):
-    from vjepa_byor_sim import SimRig
+    from vjepa_byor.sim import SimRig
 
     def render(state):
         return SimRig(start_mm=state, resolution=resolution).camera.capture()

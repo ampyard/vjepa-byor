@@ -1,10 +1,9 @@
 """Rigs for the data collector tests.
 
-``fake-sim`` is a small simulated rig that lives in the core's tests, because the
-core must not depend on the ``sim`` plugin (``vjepa-byor-sim``): an XY
-gantry with 8 directions x 3 step sizes, a JSON-line codec and a camera that
-draws the carriage. It is registered as ``fake-sim``, never ``sim``, so it
-cannot clash with the real plugin.
+``fake-sim`` is a small simulated rig kept separate from the built-in ``sim``, so the
+collector tests do not depend on how ``sim`` renders: an XY gantry with 8 directions
+x 3 step sizes, a JSON-line codec and a camera that draws the carriage. It is
+registered as ``fake-sim``, never ``sim``, so it cannot clash with the built-in.
 """
 
 from __future__ import annotations

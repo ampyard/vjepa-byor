@@ -82,7 +82,7 @@ docker/demo.sh down                                # stop everything
 By hand, each `docker/run.sh` is a new container; they find each other through DDS:
 
 ```bash
-docker/run.sh python -m vjepa_byor_sim.ros2_bridge          # 1: the simulated robot
+docker/run.sh python -m vjepa_byor.sim.ros2_bridge          # 1: the simulated robot
 docker/run.sh python apps/ros2/reach_goal_server.py         # 2: the planner as /reach_goal (GPU)
 docker/run.sh python apps/ros2/dashboard.py --host <name>  # 3: the dashboard, http://<name>:8080
 docker/run.sh ros2 action send_goal --feedback /reach_goal \

@@ -7,8 +7,9 @@ one; options passed to :func:`load_rig` go to that callable::
     [project.entry-points."vjepa_byor.rigs"]
     esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
-The ``ros2`` rig ships with the core library, without an entry point
-(:mod:`vjepa_byor.ros2`, configured with ``--rig-config``). It is listed by
+Two rigs ship with the core library, without an entry point: ``sim``, a
+simulated XY stage (:mod:`vjepa_byor.sim`), and ``ros2``, any ROS 2 robot
+(:mod:`vjepa_byor.ros2`, configured with ``--rig-config``). ``ros2`` is listed by
 :func:`available_rigs` only when ``rclpy`` is importable (a sourced ROS 2
 environment), but :func:`load_rig` builds it either way, so its config can be
 checked without ROS.
@@ -33,7 +34,10 @@ ENTRY_POINT_GROUP = "vjepa_byor.rigs"
 RigFactory = Callable[..., Rig]
 
 # Rigs that ship inside vjepa-byor; listed like installed plugins
-BUILTIN_RIGS = [EntryPoint("ros2", "vjepa_byor.ros2:Ros2Rig", ENTRY_POINT_GROUP)]
+BUILTIN_RIGS = [
+    EntryPoint("sim", "vjepa_byor.sim:SimRig", ENTRY_POINT_GROUP),
+    EntryPoint("ros2", "vjepa_byor.ros2:Ros2Rig", ENTRY_POINT_GROUP),
+]
 
 # Built-in rigs whose runtime does not come from PyPI, and the module that runtime provides
 BUILTIN_RUNTIMES = {"ros2": "rclpy"}

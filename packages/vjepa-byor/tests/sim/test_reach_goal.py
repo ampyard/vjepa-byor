@@ -27,12 +27,12 @@ from vjepa_byor import load_rig  # noqa: E402
 from vjepa_byor.planning import PlannerConfig  # noqa: E402
 from vjepa_byor.ros2.link import image_to_tensor, tensor_to_image  # noqa: E402
 from vjepa_byor.ros2.reach_goal import LATCHED, ReachGoalServer  # noqa: E402
-from vjepa_byor_sim import SimRig  # noqa: E402
+from vjepa_byor.sim import SimRig  # noqa: E402
 
 from .conftest import BridgeThread  # noqa: E402
 
 DOMAIN_ID = 97
-SIM_ROBOT = Path(__file__).parents[3] / "apps" / "ros2" / "sim_robot.yaml"
+SIM_ROBOT = Path(__file__).parents[4] / "apps" / "ros2" / "sim_robot.yaml"
 
 
 def render(state):

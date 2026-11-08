@@ -41,6 +41,62 @@ Validate it without hardware by subclassing `vjepa_byor.testing.conformance.RigC
 (install with `pip install vjepa-byor[testing]`) and backing the rig with a
 `vjepa_byor.testing.FakeTransport` (or `FakeActionTransport`) that answers like your device.
 
+## Trying it without hardware
+
+The library includes `sim`, a simulated XY stage with a rendered top-down camera, so collection,
+fine-tuning and planning run end to end with nothing attached. The examples below use it; with your own
+rig, use its registered name in place of `sim`.
+
+```
+pip install vjepa-byor
+vjepa-byor collect --rig sim --out data/sim-try --num-samples 200 --settle-time 0
+```
+
+- **Actions:** 8 compass directions × 3 step sizes (1, 5 and 20 mm by default), as `[dx_mm, dy_mm]`
+- **State:** `XYState(x_mm, y_mm)`, reported after every move; travel is 200 × 150 mm, starting in the middle
+- **V-JEPA mapping:** millimetres to metres in the end effector's x and y slots: `[dx, dy, 0, 0, 0, 0, 0]`
+- **Wire format:** the JSON-line codec over an in-memory transport; out-of-range moves are refused with
+  `{"error": "out of range"}` and the carriage stays put
+- **Camera:** 256 × 256 RGB `uint8` by default: an orange puck on a gridded mat, with a red and a blue
+  landmark block. Anti-aliased, so a 1 mm move changes the photo; deterministic, so a position always
+  gives the same photo
+
+Options (`--rig-config sim.json`): `step_sizes_mm`, `travel_mm`, `start_mm`, `resolution` (`[height, width]`),
+`reply_timeout`.
+
+```python
+from vjepa_byor import load_rig
+
+with load_rig("sim") as rig:
+    print(rig.execute(rig.action_space.by_label("NE 5mm")))   # XYState(x_mm=105.0, y_mm=80.0)
+    photo = rig.camera.capture()                               # uint8 (3, 256, 256)
+```
+
+It is built only from the library's public building blocks (`vjepa_byor.sim`), so it doubles as an
+example of a rig.
+
+### The sim as a ROS 2 robot
+
+`python -m vjepa_byor.sim.ros2_bridge` runs the sim as an ordinary ROS 2 node (needs a sourced ROS 2
+environment and `vjepa-byor[ros2]`):
+
+```bash
+python -m vjepa_byor.sim.ros2_bridge --ros-args -p start_mm:="[40.0, 100.0]"
+ros2 topic pub --once /rig/cmd geometry_msgs/msg/Vector3Stamped "{vector: {x: 0.02, y: -0.02}}"
+ros2 topic echo /rig/state
+```
+
+| Name | Type | |
+|---|---|---|
+| `/camera/image_raw` | `sensor_msgs/Image` | `rgb8`, 256 × 256 |
+| `/rig/state` | `sensor_msgs/JointState` | joints `x`, `y`, positions in metres |
+| `/rig/cmd` (subscribed) | `geometry_msgs/Vector3Stamped` | relative move, `vector.x` / `vector.y` in metres |
+| `/rig/reset` (service) | `std_srvs/Trigger` | carriage back to `start_mm` |
+
+Photo and state share one `header.stamp` and go out at `rate_hz` (10) and after every command, including
+a refused one, which leaves the position unchanged. Parameters: `travel_mm`, `start_mm`, `resolution`,
+`rate_hz`, `camera_frame`, `stage_frame`.
+
 ## Collecting a fine-tuning dataset
 
 `vjepa-byor collect` drives any registered rig through short episodes of random actions and records every

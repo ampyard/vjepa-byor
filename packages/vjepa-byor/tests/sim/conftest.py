@@ -14,7 +14,7 @@ class BridgeThread:
     """The sim bridge node in its own context, spinning on a background thread."""
 
     def __init__(self, domain_id, start_mm=(100.0, 75.0), rate_hz=10.0):
-        from vjepa_byor_sim.ros2_bridge import SimBridge
+        from vjepa_byor.sim.ros2_bridge import SimBridge
 
         self.context = rclpy.Context()
         rclpy.init(context=self.context, domain_id=domain_id)

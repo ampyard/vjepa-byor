@@ -4,8 +4,8 @@ import torch
 from vjepa_byor import RigError, interfaces, load_rig
 from vjepa_byor.testing.collector_conformance import CollectorConformanceTests
 from vjepa_byor.testing.conformance import RigConformanceTests
-from vjepa_byor_sim import SimCamera, SimRig, SimStage, XYState
-from vjepa_byor_sim.camera import CARRIAGE_DOT
+from vjepa_byor.sim import SimCamera, SimRig, SimStage, XYState
+from vjepa_byor.sim.camera import CARRIAGE_DOT
 
 
 class TestSimRig(RigConformanceTests, CollectorConformanceTests):

@@ -13,8 +13,8 @@ from rclpy.parameter import Parameter  # noqa: E402
 from sensor_msgs.msg import Image, JointState  # noqa: E402
 from std_srvs.srv import Trigger  # noqa: E402
 
-from vjepa_byor_sim import SimRig  # noqa: E402
-from vjepa_byor_sim.ros2_bridge import LATCHED, SimBridge  # noqa: E402
+from vjepa_byor.sim import SimRig  # noqa: E402
+from vjepa_byor.sim.ros2_bridge import LATCHED, SimBridge  # noqa: E402
 
 
 @pytest.fixture

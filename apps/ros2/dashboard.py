@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def sim_mat(resolution) -> dict:
     """Where the sim's travel area is in its photo: ``px = x0 + x_mm * px_per_mm``, ``py = y0 - y_mm * px_per_mm``."""
-    from vjepa_byor_sim import SimCamera, SimStage
+    from vjepa_byor.sim import SimCamera, SimStage
 
     stage = SimStage()
     camera = SimCamera(stage, resolution)

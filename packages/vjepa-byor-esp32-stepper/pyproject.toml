@@ -3,6 +3,7 @@ name = "vjepa-byor-esp32-stepper"
 version = "0.1.0.dev0"
 description = "vjepa-byor rig plugin for an ESP32-driven XY stepper stage."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.4",
@@ -14,6 +15,11 @@ esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
 [tool.uv.sources]
 vjepa-byor = { workspace = true }
+
+[project.urls]
+Homepage = "https://github.com/ampyard/vjepa-byor"
+Repository = "https://github.com/ampyard/vjepa-byor"
+Issues = "https://github.com/ampyard/vjepa-byor/issues"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.14"]

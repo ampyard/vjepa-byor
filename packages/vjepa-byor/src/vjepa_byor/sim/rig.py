@@ -8,8 +8,8 @@ from vjepa_byor import Rig
 from vjepa_byor.actions import DiscreteActionSpace, SlotMapping
 from vjepa_byor.actions.vjepa_mapping import X, Y
 from vjepa_byor.testing import FakeTransport
-from vjepa_byor_sim.camera import DEFAULT_RESOLUTION, SimCamera
-from vjepa_byor_sim.stage import DEFAULT_TRAVEL_MM, SimStage, XYState
+from vjepa_byor.sim.camera import DEFAULT_RESOLUTION, SimCamera
+from vjepa_byor.sim.stage import DEFAULT_TRAVEL_MM, SimStage, XYState
 
 RIG_NAME = "sim"
 

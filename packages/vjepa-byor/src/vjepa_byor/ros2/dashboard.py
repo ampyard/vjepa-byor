@@ -136,7 +136,7 @@ class DashboardNode(Node):
     def reset(self) -> str:
         if not self.reset_client.service_is_ready():
             raise RuntimeError(f"no {self.reset_client.srv_name} service: is the robot running "
-                               "(python -m vjepa_byor_sim.ros2_bridge), on the same ROS_DOMAIN_ID?")
+                               "(python -m vjepa_byor.sim.ros2_bridge), on the same ROS_DOMAIN_ID?")
         future = self.reset_client.call_async(Trigger.Request())
         future.add_done_callback(self._on_reset)
         return "resetting"

@@ -3,6 +3,8 @@ name = "vjepa-byor"
 version = "0.1.0.dev0"
 description = "Bring Your Own Robot: fine-tune V-JEPA 2-AC to predict what your robot's actions will do."
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "pillow>=10",
@@ -19,6 +21,11 @@ testing = ["pytest>=8"]
 # The built-in ros2 rig and ROS 2 tools: their pip-installable dependencies. rclpy and the message
 # packages come from a sourced ROS 2 environment (not PyPI); unpinned so ROS's own numpy satisfies it
 ros2 = ["numpy", "pyyaml"]
+
+[project.urls]
+Homepage = "https://github.com/ampyard/vjepa-byor"
+Repository = "https://github.com/ampyard/vjepa-byor"
+Issues = "https://github.com/ampyard/vjepa-byor/issues"
 
 [build-system]
 requires = ["uv_build>=0.8,<0.14"]

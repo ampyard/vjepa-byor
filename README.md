@@ -19,8 +19,7 @@ vjepa-byor/
 │
 ├── packages/
 │   ├── vjepa-byor/                  # core library, published to PyPI (backlog modules 2–5, 10, 12, 13)
-│   ├── vjepa-byor-esp32-stepper/    # our rig (ESP32 + FluidNC), built as a plugin (rig-specific parts of module 2 + module 7)
-│   └── vjepa-byor-sim/              # simulated rig, also a plugin (module 11)
+│   └── vjepa-byor-esp32-stepper/    # our rig (ESP32 + FluidNC), built as a plugin (rig-specific parts of module 2 + module 7)
 │
 ├── apps/                            # POC-specific, never published
 │   ├── goal_generator/              # module 1
@@ -73,6 +72,8 @@ src/vjepa_byor/
 │   ├── scorer.py          #   one error per candidate action vs the goal latents (L1, change-weighted)
 │   └── ranking.py         #   where the true action ranks on a labelled split (vjepa-byor rank)
 ├── testing/               # conformance tests and a fake in-memory transport for plugin authors
+├── sim/                   # module 11: built-in `sim` rig, a simulated XY stage with a rendered camera
+│                          #   (ros2_bridge.py runs it as a ROS 2 node)
 ├── ros2/                  # module 13: built-in `ros2` rig configured from a file; optional extra
 │                          #   vjepa-byor[ros2], imported only with --rig ros2
 └── cli.py                 # vjepa-byor collect | encode | finetune | eval | rank
@@ -80,7 +81,7 @@ src/vjepa_byor/
 
 ### Rig plugins: `packages/vjepa-byor-<rig>/`
 
-Every rig, including ours, is a plugin. A plugin provides:
+Every hardware rig, including ours, is a plugin (only `sim` and the config-driven `ros2` are built in). A plugin provides:
 
 | Piece | Implements | Required? |
 |---|---|---|
@@ -115,20 +116,22 @@ esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
 and is selected by name: `vjepa-byor collect --rig esp32-stepper`, or `--rig sim`.
 
-### Simulated rig: `packages/vjepa-byor-sim/`
+### Simulated rig: `vjepa_byor.sim`
 
-Registered as `sim`. It has the same mechanics as our real stage and is built only from the core library's
-building blocks (the JSON-line codec and an in-memory transport), with a rendered top-down camera.
+Built into the core library as `sim`, so `pip install vjepa-byor` can be tried with no hardware. It has the
+same mechanics as our real stage and is built only from the core library's public building blocks (the
+JSON-line codec and an in-memory transport), with a rendered top-down camera.
 
 ```
-vjepa-byor-sim/
-├── pyproject.toml
-├── src/vjepa_byor_sim/
-│   ├── stage.py           # XY carriage in mm; answers JSON-line commands, refuses out-of-range moves
-│   ├── camera.py          # renders the mat, landmark blocks and carriage, 256 × 256 by default
-│   └── rig.py             # SimRig factory; options come from --rig-config
-└── tests/                 # conformance, collector conformance and rendering tests
+src/vjepa_byor/sim/
+├── stage.py           # XY carriage in mm; answers JSON-line commands, refuses out-of-range moves
+├── camera.py          # renders the mat, landmark blocks and carriage, 256 × 256 by default
+├── rig.py             # SimRig factory; options come from --rig-config
+└── ros2_bridge.py     # the sim as a ROS 2 robot (python -m vjepa_byor.sim.ros2_bridge)
 ```
+
+Its tests (conformance, collector conformance, rendering, and the ROS 2 bridge and `/reach_goal` tests that
+skip without rclpy) are in `packages/vjepa-byor/tests/sim/`.
 
 ## Running with ROS 2
 
@@ -140,7 +143,7 @@ On Ubuntu 24.04, ROS 2 Jazzy can be installed natively. Everywhere else (other L
 - **ROS 2 is optional and comes from a config file.** `--rig ros2 --rig-config robot.yaml` lets any ROS 2 robot be used as a rig without writing a plugin (backlog module 13). It ships in the core library as an extra, `vjepa-byor[ros2]`, and is imported only when selected. ROS is a way to talk to a robot, not hardware code, so this fits the rule above. `rclpy` comes from the user's ROS environment, not PyPI.
 - **Two ways to talk to a rig.** Devices that speak text (serial, WiFi, Bluetooth, FluidNC's G-code) use a `CommandCodec` plus a line `Transport`. Rigs driven through typed messages (ROS 2, vendor SDKs) use an `ActionTransport`, which takes the action tensor and returns the rig state, with no codec and no strings in between. Samples from such rigs have no `command` line.
 - **Our rig is a plugin, not a built-in.** It uses only the public interfaces. If the core has to change to make our rig work, a third party would have hit the same problem, so we fix the interface rather than add a special case.
-- **The simulator is a plugin too.** The planner switches between simulation and hardware with `--rig`, with no code changes (backlog module 6).
+- **The simulator ships with the core library**, so the library can be tried straight after `pip install`. It still uses only the public interfaces, like a plugin, and the planner switches between simulation and hardware with `--rig`, with no code changes (backlog module 6).
 - **Off-the-shelf firmware, not our own.** The ESP32 runs FluidNC, which already does homing, soft limits, position reporting and safe stops. We keep its `config.yaml` with the plugin. The codec is tested against replies captured from the real board, and the emulator answers like FluidNC.
 - **Our own rig does not use ROS.** The plugin talks G-code to FluidNC directly; ROS support is for other people's robots.
 - **We fine-tune; we do not train.** The V-JEPA 2-AC encoder stays frozen. Only the predictor is fine-tuned, on latents encoded once ahead of time, so the encoder is not in GPU memory during fine-tuning.

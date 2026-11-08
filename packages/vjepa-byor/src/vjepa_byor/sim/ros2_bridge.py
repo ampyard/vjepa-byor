@@ -1,7 +1,7 @@
 """ROS 2 bridge node: the simulated stage as an ordinary ROS 2 robot (ROSCon demo backlog item 4).
 
-    python -m vjepa_byor_sim.ros2_bridge                                  # defaults
-    python -m vjepa_byor_sim.ros2_bridge --ros-args -p start_mm:="[40.0, 100.0]" -p rate_hz:=5.0
+    python -m vjepa_byor.sim.ros2_bridge                                  # defaults
+    python -m vjepa_byor.sim.ros2_bridge --ros-args -p start_mm:="[40.0, 100.0]" -p rate_hz:=5.0
 
 Topics (SI units, as ROS expects):
 
@@ -37,8 +37,8 @@ from sensor_msgs.msg import Image, JointState
 from std_srvs.srv import Trigger
 from torch import Tensor
 
-from vjepa_byor_sim.camera import DEFAULT_RESOLUTION, SimCamera
-from vjepa_byor_sim.stage import DEFAULT_TRAVEL_MM, SimStage
+from vjepa_byor.sim.camera import DEFAULT_RESOLUTION, SimCamera
+from vjepa_byor.sim.stage import DEFAULT_TRAVEL_MM, SimStage
 
 NODE_NAME = "sim_bridge"
 JOINT_NAMES = ("x", "y")

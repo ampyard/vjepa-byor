@@ -85,7 +85,7 @@ up() {
 
     echo "ROS_DOMAIN_ID=$ROS_DOMAIN_ID"
     start vjepa-bridge "sim stage" 30 "" -- \
-        python -m vjepa_byor_sim.ros2_bridge --ros-args -p "start_mm:=[$start_x.0, $start_y.0]"
+        python -m vjepa_byor.sim.ros2_bridge --ros-args -p "start_mm:=[$start_x.0, $start_y.0]"
     start vjepa-planner "/reach_goal ready" 180 "$gpus" -- \
         python apps/ros2/reach_goal_server.py --finetuned "$checkpoint"
     start vjepa-dashboard "dashboard on" 30 "" -- \

@@ -1,4 +1,4 @@
-# The simulated stage behind the ROS 2 bridge node (python -m vjepa_byor_sim.ros2_bridge),
+# The simulated stage behind the ROS 2 bridge node (python -m vjepa_byor.sim.ros2_bridge),
 # used as the built-in ros2 rig:
 #
 #   vjepa-byor collect --rig ros2 --rig-config apps/ros2/sim_robot.yaml --out data/ros2-sim --num-samples 50
