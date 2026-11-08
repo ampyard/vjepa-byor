@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: |
+          Bump type (major, minor, patch) or explicit version (e.g. 1.2.0, 1.2.0rc1)
+        required: true
+        default: minor
+
+permissions:
+  contents: write
+  actions: read # to check that CI passed on the commit being released
+  id-token: write # PyPI trusted publishing
+
+concurrency:
+  group: release
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check that CI passed on this commit
+        # The release runs no tests itself (no torch download at all), so it relies on CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --event push --limit 1 \
+            --json conclusion --jq '.[0].conclusion // empty')
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI has not passed on $GITHUB_SHA (latest run: ${conclusion:-none or still running})"
+            exit 1
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT: ${{ github.event.inputs.version }}
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+          NEW=$(python3 - "${LATEST_TAG#v}" "$INPUT" <<'EOF'
+          import re, sys
+          latest, wanted = sys.argv[1], sys.argv[2].strip()
+          if wanted in ("major", "minor", "patch"):
+              major, minor, patch = (int(n) for n in re.match(r"(\d+)\.(\d+)\.(\d+)", latest).groups())
+              major, minor, patch = {"major": (major + 1, 0, 0), "minor": (major, minor + 1, 0),
+                                     "patch": (major, minor, patch + 1)}[wanted]
+              print(f"{major}.{minor}.{patch}")
+          elif re.fullmatch(r"\d+\.\d+\.\d+((a|b|rc)\d+)?", wanted):
+              print(wanted)
+          else:
+              sys.exit(f"version must be major, minor, patch or like 1.2.0 / 1.2.0rc1, not {wanted!r}")
+          EOF
+          )
+          if git rev-parse -q --verify "refs/tags/v$NEW" >/dev/null; then
+            echo "::error::tag v$NEW already exists"
+            exit 1
+          fi
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$NEW"
+
+      - name: Update version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" packages/vjepa-byor/pyproject.toml
+          grep -q "^version = \"$VERSION\"$" packages/vjepa-byor/pyproject.toml
+          uv lock  # reads package metadata only; nothing is installed
+
+      - name: Build
+        run: uv build --package vjepa-byor --out-dir dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
+
+      - name: Commit and tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/vjepa-byor/pyproject.toml uv.lock
+          if git diff --cached --quiet; then
+            echo "Version files unchanged; tagging the current commit"
+          else
+            git commit -m "chore: bump vjepa-byor to v$VERSION"
+          fi
+          git tag "v$VERSION"
+          git push origin HEAD --tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ contains(steps.version.outputs.version, 'a') || contains(steps.version.outputs.version, 'b') || contains(steps.version.outputs.version, 'rc') }}
+          files: dist/*
