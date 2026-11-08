@@ -1,10 +1,10 @@
-# V-JEPA Physical AI POC
+# vjepa-byor
 
 Type a command in plain English and a low-cost rig carries it out. An image-generation model imagines the goal state; a fine-tuned V-JEPA 2-AC predictor scores every candidate action against that goal; the best action is sent to an ESP32 running [FluidNC](http://wiki.fluidnc.com) that drives stepper motors. A new photo is taken and the loop repeats until the goal is reached.
 
 > **What is a rig?** A rig is the physical robot setup: the actuators that move (here, stepper motors), the controller that drives them (here, an ESP32 running FluidNC), and the camera that watches the result. In this POC it is a small XY stage. "Robot" is the public-facing word; "rig" is the term used in the code and the docs (`Rig`, `RigState`, `--rig`). A simulated rig stands in for the hardware during development.
 
-![Pipeline](vjepa_physical_ai_pipeline.png)
+![Pipeline](vjepa_byor_pipeline.png)
 
 The modules and their acceptance criteria are in [backlog.md](backlog.md).
 
@@ -13,7 +13,7 @@ The modules and their acceptance criteria are in [backlog.md](backlog.md).
 This is a monorepo. One part is a library published to PyPI; the rest is specific to this POC.
 
 ```
-vjepa-physical-ai-poc/
+vjepa-byor/
 ├── pyproject.toml                   # uv workspace root (not published)
 ├── backlog.md
 │
@@ -41,7 +41,7 @@ vjepa-physical-ai-poc/
 
 It fine-tunes your pretrained V-JEPA on your own robot's (before, action, after) data, and includes the tools to define that action set and collect that data. Install with `pip install vjepa-byor`; import as `vjepa_byor`.
 
-Each robot it works with is described as a [rig](#v-jepa-physical-ai-poc) (actuators + controller + camera), supplied as a plugin.
+Each robot it works with is described as a [rig](#vjepa-byor) (actuators + controller + camera), supplied as a plugin.
 
 ```
 src/vjepa_byor/

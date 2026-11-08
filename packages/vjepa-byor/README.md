@@ -22,12 +22,20 @@ and registers it under the `vjepa_byor.rigs` entry-point group:
 my-rig = "my_rig_package:make_rig"
 ```
 
+The rig's name must match the name it is registered under: `make_rig` above returns
+`Rig(name="my-rig", ...)`, otherwise `load_rig("my-rig")` refuses it.
+
 There are two ways to talk to the hardware:
 
 - **Text commands** (serial, WiFi, Bluetooth): give the rig a `CommandCodec`, which turns an action into
   a command line and the reply back into a state, and a `Transport` that carries the lines.
 - **Action tensors** (ROS 2, a vendor SDK, ...): give the rig an `ActionTransport` and no codec. Its
   `execute(action, timeout)` carries out the move and returns the state the rig reports.
+
+A ROS 2 robot needs no plugin: the built-in `ros2` rig is described by a YAML file
+(`--rig ros2 --rig-config robot.yaml`, see `vjepa_byor.ros2.config`). Install with
+`pip install vjepa-byor[ros2]` in a venv created with `--system-site-packages` from a sourced ROS 2
+environment, since `rclpy` is not on PyPI. Without `rclpy`, `available_rigs()` does not list `ros2`.
 
 Validate it without hardware by subclassing `vjepa_byor.testing.conformance.RigConformanceTests`
 (install with `pip install vjepa-byor[testing]`) and backing the rig with a

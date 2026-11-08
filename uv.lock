@@ -11,7 +11,7 @@ members = [
     "vjepa-byor",
     "vjepa-byor-esp32-stepper",
     "vjepa-byor-sim",
-    "vjepa-physical-ai-poc",
+    "vjepa-byor-workspace",
 ]
 
 [[package]]
@@ -1113,6 +1113,11 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+ros2 = [
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "pyyaml" },
+]
 testing = [
     { name = "pytest" },
 ]
@@ -1124,12 +1129,14 @@ vjepa = [
 [package.metadata]
 requires-dist = [
     { name = "einops", marker = "extra == 'vjepa'", specifier = ">=0.7" },
+    { name = "numpy", marker = "extra == 'ros2'" },
     { name = "pillow", specifier = ">=10" },
     { name = "pytest", marker = "extra == 'testing'", specifier = ">=8" },
+    { name = "pyyaml", marker = "extra == 'ros2'" },
     { name = "timm", marker = "extra == 'vjepa'", specifier = ">=1.0" },
     { name = "torch", specifier = ">=2.4" },
 ]
-provides-extras = ["vjepa", "testing"]
+provides-extras = ["vjepa", "testing", "ros2"]
 
 [[package]]
 name = "vjepa-byor-esp32-stepper"
@@ -1162,7 +1169,7 @@ requires-dist = [
 ]
 
 [[package]]
-name = "vjepa-physical-ai-poc"
+name = "vjepa-byor-workspace"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [

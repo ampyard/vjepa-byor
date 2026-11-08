@@ -137,6 +137,10 @@ class Ros2Link:
             raise ConnectionError(
                 f"the ros2 rig needs rclpy from a sourced ROS 2 environment ({e}); see docker/README.md"
             ) from e
+        try:
+            import numpy  # noqa: F401  (photos go into sensor_msgs/Image through numpy)
+        except ImportError as e:
+            raise ConnectionError(f"the ros2 rig needs numpy ({e}); pip install vjepa-byor[ros2]") from e
 
         try:
             state_cls, self._cmd_cls = get_message(self.state.type), get_message(self.command.type)

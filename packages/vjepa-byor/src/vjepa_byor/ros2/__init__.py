@@ -4,7 +4,9 @@
 
 The file's format is described in :mod:`vjepa_byor.ros2.config`. ``rclpy`` comes from a sourced
 ROS 2 environment (not from PyPI) and is imported only when the rig is opened, so building the rig
-and checking its config work without ROS.
+and checking its config work without ROS. The rest (numpy, PyYAML) comes with
+``pip install vjepa-byor[ros2]``, in a venv that sees the ROS packages (``--system-site-packages``).
+The rig is listed by ``available_rigs()`` only when ``rclpy`` is importable.
 
 So far: commands on a topic (any message type with numeric fields), state from a topic
 (``JointState`` joints or any numeric fields) and ``sensor_msgs/Image`` photos. ROS actions,

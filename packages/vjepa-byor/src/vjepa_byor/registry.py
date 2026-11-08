@@ -7,8 +7,13 @@ one; options passed to :func:`load_rig` go to that callable::
     [project.entry-points."vjepa_byor.rigs"]
     esp32-stepper = "vjepa_byor_esp32_stepper:Esp32StepperRig"
 
-The ``ros2`` rig ships with the core library and is always available, without
-an entry point (:mod:`vjepa_byor.ros2`, configured with ``--rig-config``).
+The ``ros2`` rig ships with the core library, without an entry point
+(:mod:`vjepa_byor.ros2`, configured with ``--rig-config``). It is listed by
+:func:`available_rigs` only when ``rclpy`` is importable (a sourced ROS 2
+environment), but :func:`load_rig` builds it either way, so its config can be
+checked without ROS.
+
+A rig's :attr:`Rig.name` must be the name it is registered under.
 
 Rigs can also be registered in-process with :func:`register_rig`, which is
 handy in notebooks and tests.
@@ -18,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from importlib.metadata import EntryPoint, entry_points
+from importlib.util import find_spec
 from typing import Any
 
 from vjepa_byor.rig import Rig
@@ -28,6 +34,9 @@ RigFactory = Callable[..., Rig]
 
 # Rigs that ship inside vjepa-byor; listed like installed plugins
 BUILTIN_RIGS = [EntryPoint("ros2", "vjepa_byor.ros2:Ros2Rig", ENTRY_POINT_GROUP)]
+
+# Built-in rigs whose runtime does not come from PyPI, and the module that runtime provides
+BUILTIN_RUNTIMES = {"ros2": "rclpy"}
 
 _registered: dict[str, Rig | RigFactory] = {}
 
@@ -52,9 +61,16 @@ def _plugin_targets() -> dict[str, EntryPoint]:
     return found
 
 
+def _unusable_builtins() -> set[str]:
+    return {name for name, module in BUILTIN_RUNTIMES.items() if find_spec(module) is None}
+
+
 def available_rigs() -> list[str]:
-    """Names of every installed or in-process registered rig, sorted."""
-    return sorted(set(_plugin_targets()) | set(_registered))
+    """Names of every installed or in-process registered rig, sorted.
+
+    Built-in rigs whose runtime is missing (``ros2`` without ``rclpy``) are left out.
+    """
+    return sorted((set(_plugin_targets()) - _unusable_builtins()) | set(_registered))
 
 
 def register_rig(name: str, target: Rig | RigFactory, *, replace: bool = False) -> None:
@@ -93,5 +109,8 @@ def load_rig(name: str, **options: Any) -> Rig:
     if not isinstance(rig, Rig):
         raise TypeError(f"rig {name!r} factory returned {type(rig).__name__}, not Rig")
     if rig.name != name:
-        raise ValueError(f"rig registered as {name!r} calls itself {rig.name!r}")
+        raise ValueError(
+            f"rig registered as {name!r} calls itself {rig.name!r}; "
+            f"a rig's name must match its registered name (Rig(name={name!r}, ...))"
+        )
     return rig

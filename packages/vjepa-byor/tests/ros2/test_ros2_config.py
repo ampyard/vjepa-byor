@@ -1,13 +1,14 @@
 """The ros2 rig without ROS: config checking, the state type and photo conversion."""
 
 import copy
+from importlib.util import find_spec
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 import torch
 
-from vjepa_byor import ActionTransport, Camera, available_rigs, load_rig
+from vjepa_byor import ActionTransport, Camera, available_rigs, load_rig, registry
 from vjepa_byor.ros2 import Ros2ConfigError, Ros2Rig, state_type_for
 from vjepa_byor.ros2.link import image_to_tensor
 
@@ -21,8 +22,19 @@ def config():
     return yaml.safe_load(SIM_ROBOT.read_text())
 
 
-def test_ros2_is_a_builtin_rig():
+def test_ros2_is_listed_only_when_rclpy_is_importable():
+    assert ("ros2" in available_rigs()) == (find_spec("rclpy") is not None)
+
+
+def test_ros2_is_listed_when_rclpy_is_importable(monkeypatch):
+    monkeypatch.setattr(registry, "find_spec", lambda module: object())
     assert "ros2" in available_rigs()
+
+
+def test_ros2_is_hidden_but_still_loadable_without_rclpy(monkeypatch, config):
+    monkeypatch.setattr(registry, "find_spec", lambda module: None)
+    assert "ros2" not in available_rigs()
+    assert load_rig("ros2", **config).name == "ros2"
 
 
 def test_sim_robot_yaml_builds_the_same_actions_and_mapping_as_the_sim(config):

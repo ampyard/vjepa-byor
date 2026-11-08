@@ -1,7 +1,7 @@
 [project]
-name = "vjepa-physical-ai-poc"
+name = "vjepa-byor-workspace"
 version = "0.0.0"
-description = "V-JEPA Physical AI POC (workspace root, not published)"
+description = "vjepa-byor monorepo (workspace root, not published)"
 requires-python = ">=3.11"
 dependencies = ["vjepa-byor[vjepa]", "vjepa-byor-esp32-stepper", "vjepa-byor-sim"]
 

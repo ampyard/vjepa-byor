@@ -16,6 +16,9 @@ vjepa-byor = "vjepa_byor.cli:main"
 # Meta's V-JEPA 2-AC model code (loaded through torch.hub) needs these
 vjepa = ["einops>=0.7", "timm>=1.0"]
 testing = ["pytest>=8"]
+# The built-in ros2 rig and ROS 2 tools: their pip-installable dependencies. rclpy and the message
+# packages come from a sourced ROS 2 environment (not PyPI); unpinned so ROS's own numpy satisfies it
+ros2 = ["numpy", "pyyaml"]
 
 [build-system]
 requires = ["uv_build>=0.8,<0.14"]
