@@ -1104,7 +1104,7 @@ wheels = [
 
 [[package]]
 name = "vjepa-byor"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/vjepa-byor" }
 dependencies = [
     { name = "pillow" },

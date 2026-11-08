@@ -1,6 +1,6 @@
 [project]
 name = "vjepa-byor"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Bring Your Own Robot: fine-tune V-JEPA 2-AC to predict what your robot's actions will do."
 readme = "README.md"
 license = "MIT"
